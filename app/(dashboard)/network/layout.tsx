@@ -1,6 +1,6 @@
 "use client"
 
-import { Users } from "lucide-react"
+import { Users, UserPlus } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -33,12 +33,20 @@ export default function NetworkPageClient() {
         title="Network"
         description="Build meaningful professional connections"
         action={
-          <Link href="/network/find">
-            <Button>
-              <Users className="mr-2 h-4 w-4" />
-              Find Connections
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/network/requests">
+              <Button variant="outline">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Connection Requests
+              </Button>
+            </Link>
+            <Link href="/network/find">
+              <Button>
+                <Users className="mr-2 h-4 w-4" />
+                Find Connections
+              </Button>
+            </Link>
+          </div>
         }
       />
 
