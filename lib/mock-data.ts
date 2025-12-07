@@ -1103,7 +1103,7 @@ export const MOCK_JOBS = [
     company: "Creative Studios SL",
     companyLogo: "/generic-company-logo.png",
     type: "job",
-    location: "Remote",
+    location: "Freetown, Sierra Leone",
     remote: true,
     description:
       "Design beautiful and intuitive user experiences for web and mobile applications. You'll collaborate with product managers and developers to create user-centered designs that delight our customers.",
@@ -1120,5 +1120,44 @@ export const MOCK_JOBS = [
     postedDate: "2025-12-02T00:00:00.000Z",
     deadline: "2026-01-18T23:59:59.000Z",
     applicationUrl: "https://example.com/apply/uiux-designer",
+  },
+]
+
+export const MOCK_CONNECTION_REQUESTS = [
+  {
+    id: "req-1",
+    userId: "user-8",
+    name: "Amara Johnson",
+    avatar: "/amara.jpg",
+    role: "Software Engineer",
+    company: "Accenture",
+    connectionType: "peer" as const,
+    mutualConnections: 3,
+    requestedAt: "2024-12-05T10:30:00.000Z",
+    message: "I'm impressed by your projects! Let's connect.",
+  },
+  {
+    id: "req-2",
+    userId: "user-9",
+    name: "Ibrahim Hassan",
+    avatar: "/ibrahim.jpg",
+    role: "UX/UI Designer",
+    company: "Deloitte",
+    connectionType: "peer" as const,
+    mutualConnections: 5,
+    requestedAt: "2024-12-04T14:15:00.000Z",
+    message: "Great to see your work in design!",
+  },
+  {
+    id: "req-3",
+    userId: "user-10",
+    name: "Zainab Ahmed",
+    avatar: "/zainab.jpg",
+    role: "Product Manager",
+    company: "Microsoft",
+    connectionType: "mentor" as const,
+    mutualConnections: 2,
+    requestedAt: "2024-12-03T09:45:00.000Z",
+    message: "I'd love to mentor you in product management.",
   },
 ]
