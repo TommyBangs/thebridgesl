@@ -34,18 +34,18 @@ export function QuickActionCard({
   const Icon = iconMap[icon]
 
   const cardContent = (
-    <CardContent className="flex items-start gap-4 p-6">
+    <CardContent className="flex flex-col items-start gap-2 p-3 sm:gap-3 sm:p-4">
       <div
         className={cn(
-          "rounded-lg p-3 transition-colors",
+          "rounded-lg p-2 transition-colors",
           variant === "primary" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
         )}
       >
-        <Icon className="h-5 w-5" />
+        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
       </div>
-      <div className="flex-1 space-y-1">
-        <h3 className="font-semibold">{title}</h3>
-        <p className="text-sm text-muted-foreground">{description}</p>
+      <div className="flex-1 space-y-0.5">
+        <h3 className="text-sm font-semibold sm:text-base">{title}</h3>
+        <p className="text-xs text-muted-foreground sm:text-sm">{description}</p>
       </div>
     </CardContent>
   )

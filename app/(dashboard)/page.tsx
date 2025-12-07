@@ -22,7 +22,7 @@ export default function HomePage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <section className="animate-in slide-in-from-bottom-4 duration-500">
         <h2 className="mb-4 text-xl font-bold">Quick Actions</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 grid-cols-2 sm:gap-3 lg:gap-4 lg:grid-cols-4">
           <QuickActionCard
             icon="folder-plus"
             title="Add Project"
