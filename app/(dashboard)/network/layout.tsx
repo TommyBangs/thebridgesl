@@ -33,17 +33,19 @@ export default function NetworkPageClient() {
         title="Network"
         description="Build meaningful professional connections"
         action={
-          <div className="flex gap-2">
-            <Link href="/network/requests">
-              <Button variant="outline">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Connection Requests
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-2 w-full sm:w-auto">
+            <Link href="/network/requests" className="flex-1 sm:flex-none">
+              <Button variant="outline" className="w-full sm:w-auto bg-transparent">
+                <UserPlus className="mr-2 h-4 w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Connection Requests</span>
+                <span className="sm:hidden">Requests</span>
               </Button>
             </Link>
-            <Link href="/network/find">
-              <Button>
-                <Users className="mr-2 h-4 w-4" />
-                Find Connections
+            <Link href="/network/find" className="flex-1 sm:flex-none">
+              <Button className="w-full sm:w-auto">
+                <Users className="mr-2 h-4 w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Find Connections</span>
+                <span className="sm:hidden">Find</span>
               </Button>
             </Link>
           </div>
@@ -56,7 +58,7 @@ export default function NetworkPageClient() {
             <CardContent className="p-6">
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
-                  <Avatar className="h-12 w-12">
+                  <Avatar className="h-12 w-12 flex-shrink-0">
                     <AvatarImage src={connection.avatar || "/placeholder.svg"} alt={connection.name} />
                     <AvatarFallback>{connection.name[0]}</AvatarFallback>
                   </Avatar>
@@ -67,7 +69,7 @@ export default function NetworkPageClient() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Users className="h-3 w-3" />
+                  <Users className="h-3 w-3 flex-shrink-0" />
                   <span>{connection.mutualConnections} mutual connections</span>
                 </div>
                 <Button
