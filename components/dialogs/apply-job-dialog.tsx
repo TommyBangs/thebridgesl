@@ -18,16 +18,21 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useRouter } from "next/navigation"
 import { Upload, FileText } from "lucide-react"
+import { apiPost } from "@/lib/api-client"
+import { useToast } from "@/hooks/use-toast"
 
 interface ApplyJobDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   jobTitle?: string
   company?: string
+  opportunityId?: string
 }
 
-export function ApplyJobDialog({ open, onOpenChange, jobTitle, company }: ApplyJobDialogProps) {
+export function ApplyJobDialog({ open, onOpenChange, jobTitle, company, opportunityId }: ApplyJobDialogProps) {
   const router = useRouter()
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -36,11 +41,58 @@ export function ApplyJobDialog({ open, onOpenChange, jobTitle, company }: ApplyJ
     agreeToTerms: false,
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Show success message and close
-    onOpenChange(false)
-    // Could navigate or show a toast
+
+    if (!opportunityId) {
+      toast({
+        title: "Error",
+        description: "Opportunity ID is required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!formData.agreeToTerms) {
+      toast({
+        title: "Error",
+        description: "Please agree to the terms and conditions",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      await apiPost("/api/applications", {
+        opportunityId,
+        coverLetter: formData.coverLetter || undefined,
+      })
+
+      toast({
+        title: "Success",
+        description: "Application submitted successfully!",
+      })
+
+      onOpenChange(false)
+      setFormData({
+        fullName: "",
+        email: "",
+        phone: "",
+        coverLetter: "",
+        agreeToTerms: false,
+      })
+      router.refresh()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit application",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -135,8 +187,8 @@ export function ApplyJobDialog({ open, onOpenChange, jobTitle, company }: ApplyJ
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!formData.agreeToTerms}>
-              Submit Application
+            <Button type="submit" disabled={!formData.agreeToTerms || loading}>
+              {loading ? "Submitting..." : "Submit Application"}
             </Button>
           </DialogFooter>
         </form>

@@ -46,10 +46,12 @@ This section explains how the system is built.
 
 ### 🏗️ Architecture Overview
 
-Currently, the application is a **High-Fidelity Frontend Prototype**.
-*   **Frontend**: It looks and feels like a real app.
-*   **Data**: It currently uses **Mock Data** (simulated data) instead of a real database. This allows us to test the user experience (UX) rapidly without setting up complex servers.
-*   **Backend Plan**: A robust backend architecture is designed and ready to be built (see `DATABASE_ARCHITECTURE.md`).
+The application is now **Production-Ready** with full backend integration!
+*   **Frontend**: Modern Next.js 16 App Router with TypeScript
+*   **Backend**: Complete REST API with Next.js API routes
+*   **Database**: PostgreSQL with Prisma ORM
+*   **Authentication**: NextAuth.js with credentials provider
+*   **Data**: All data is persisted in a real database
 
 ### 💻 Technology Stack
 
@@ -69,26 +71,36 @@ Here is how the code is organized:
 bridge-platform/
 ├── app/                    # The main application code (Next.js App Router)
 │   ├── (dashboard)/        # Pages you see after logging in (Dashboard, Profile, etc.)
-│   ├── api/                # (Planned) Backend API routes
+│   ├── api/                # Backend API routes (REST API)
+│   ├── auth/               # Authentication pages (sign in, sign up)
 │   └── globals.css         # Global styles and design tokens
 ├── components/             # Reusable building blocks
 │   ├── ui/                 # Buttons, Inputs, Cards (Basic elements)
 │   ├── dashboard/          # Complex blocks like "JobCard" or "SkillChart"
-│   └── ...
-├── lib/                    # Helper functions
-│   ├── mock-data.ts        # 👈 IMPORTANT: All the fake data lives here
-│   └── utils.ts            # Small helper tools
+│   ├── dialogs/            # Modal dialogs for forms
+│   └── providers/          # React context providers
+├── lib/                    # Helper functions and utilities
+│   ├── db.ts               # Prisma database client
+│   ├── auth.ts             # NextAuth configuration
+│   ├── api-client.ts       # API request utilities
+│   ├── middleware.ts       # Authentication middleware
+│   └── hooks/              # Custom React hooks
+├── prisma/                 # Database schema and migrations
+│   └── schema.prisma       # Prisma schema definition
 ├── types/                  # TypeScript definitions (The "Shape" of our data)
 └── public/                 # Images and static files
 ```
 
 ### 💾 Data Model (The "Brain")
 
-Even though we use mock data now, the system is designed around these core concepts:
-*   **Users**: The central entity.
-*   **Skills**: The currency of the platform.
-*   **Credentials**: Proof of skills.
-*   **Opportunities**: Jobs/Internships that require skills.
+The system uses a comprehensive database schema with these core concepts:
+*   **Users**: The central entity with authentication and profiles.
+*   **Skills**: The currency of the platform with trending data.
+*   **Credentials**: Blockchain-verifiable proof of skills.
+*   **Opportunities**: Jobs/Internships with AI-powered matching.
+*   **Projects**: Portfolio projects with media and collaborators.
+*   **Applications**: Job application tracking.
+*   **Connections**: Professional networking.
 
 *For the full database schema, read `DATABASE_ARCHITECTURE.md`.*
 
@@ -100,36 +112,76 @@ Follow these steps to run the project on your computer.
 
 ### Prerequisites
 *   **Node.js** (Version 18 or higher) installed.
+*   **PostgreSQL** database (local or cloud).
 *   **Git** installed.
 
-### Installation
+### Quick Setup
 
-1.  **Clone the repository** (Download the code):
+1.  **Clone the repository**:
     ```bash
     git clone https://github.com/TommyBangs/thebridgesl.git
     cd thebridgesl
     ```
 
-2.  **Install dependencies** (Download the libraries we need):
+2.  **Install dependencies**:
     ```bash
     npm install
     ```
 
-3.  **Run the development server** (Start the app):
+3.  **Set up environment variables**:
+    ```bash
+    cp .env.example .env
+    # Edit .env with your database URL and NextAuth secret
+    ```
+
+4.  **Set up the database**:
+    ```bash
+    npm run db:generate
+    npm run db:push
+    ```
+
+5.  **Run the development server**:
     ```bash
     npm run dev
     ```
 
-4.  **Open your browser**:
-    Go to [http://localhost:3000](http://localhost:3000) to see the app running!
+6.  **Open your browser**:
+    Go to [http://localhost:3000](http://localhost:3000) and sign up for an account!
+
+### Detailed Setup
+
+For detailed setup instructions, including database configuration and troubleshooting, see **[SETUP.md](./SETUP.md)**.
 
 ---
 
+## 🎯 Features
+
+### ✅ Implemented
+- User authentication (sign up, sign in)
+- User profiles with learner data
+- Skills management with trending data
+- Projects portfolio with media
+- Credentials management
+- Job opportunities with AI matching
+- Job applications
+- Protected routes and middleware
+- RESTful API with full CRUD operations
+- Database persistence with Prisma ORM
+
+### 🚧 Coming Soon
+- Network/connections features
+- Real-time notifications
+- File uploads for project media
+- Blockchain credential verification
+- Career path recommendations
+- Advanced search functionality
+
 ## 🤝 Contributing
 
-We welcome ideas! Since this is a prototype:
+We welcome contributions!
 1.  **Found a bug?** Open an issue.
 2.  **Want to add a feature?** Fork the repo, make changes, and open a Pull Request (PR).
+3.  **Need help?** Check [SETUP.md](./SETUP.md) or [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)
 
 ---
 
