@@ -2,11 +2,12 @@ import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-export default auth((req) => {
+export default auth(async (req) => {
   const { pathname } = req.nextUrl
   const isAuthPage = pathname.startsWith("/auth")
+  const isOnboardingPage = pathname.startsWith("/onboarding")
   const isApiRoute = pathname.startsWith("/api")
-  const isPublicRoute = pathname === "/" || pathname.startsWith("/public")
+  const isPublicRoute = pathname.startsWith("/public")
 
   // Allow public routes and API routes
   if (isPublicRoute || isApiRoute) {
@@ -18,8 +19,8 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/", req.url))
   }
 
-  // Protect dashboard routes
-  if (!isAuthPage && !req.auth) {
+  // Protect dashboard routes - require authentication
+  if (!isAuthPage && !isOnboardingPage && !req.auth) {
     return NextResponse.redirect(new URL("/auth/signin", req.url))
   }
 

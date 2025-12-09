@@ -52,9 +52,16 @@ model LearnerProfile {
   userId                String            @id @map("user_id")
   bio                   String?
   location              String?
+  phone                 String?
+  website               String?
   university            String?
   major                 String?
   graduationYear        Int?              @map("graduation_year")
+  currentJobTitle       String?           @map("current_job_title")
+  currentCompany        String?           @map("current_company")
+  linkedinUrl           String?           @map("linkedin_url")
+  githubUrl             String?           @map("github_url")
+  portfolioUrl          String?           @map("portfolio_url")
   skillsMatchPercentage Int               @default(0) @map("skills_match_percentage")
   verificationStatus    VerificationStatus @default(UNVERIFIED) @map("verification_status")
 

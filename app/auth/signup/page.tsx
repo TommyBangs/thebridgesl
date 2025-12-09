@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -54,9 +55,22 @@ export default function SignUpPage() {
 
       toast({
         title: "Success",
-        description: "Account created successfully. Please sign in.",
+        description: "Account created successfully!",
       })
-      router.push("/auth/signin")
+      
+      // Sign in the user automatically
+      const signInResult = await signIn("credentials", {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      })
+
+      if (signInResult?.error) {
+        router.push("/auth/signin")
+      } else {
+        router.push("/")
+        router.refresh()
+      }
     } catch (error: any) {
       toast({
         title: "Error",

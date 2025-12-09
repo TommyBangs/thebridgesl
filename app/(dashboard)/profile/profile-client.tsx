@@ -14,6 +14,11 @@ import {
   Briefcase,
   Calendar,
   Award,
+  Phone,
+  Globe,
+  Linkedin,
+  Github,
+  Link as LinkIcon,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -24,60 +29,55 @@ import { PageHeader } from "@/components/shared/page-header"
 import { SkillBadge } from "@/components/shared/skill-badge"
 import { CircularProgress } from "@/components/shared/circular-progress"
 import { DownloadProfileDialog } from "@/components/dialogs/download-profile-dialog"
-import { mockCredentials, mockProjects } from "@/lib/mock-data"
+import { EditProfileDialog } from "@/components/dialogs/edit-profile-dialog"
+import { useApi } from "@/lib/hooks/use-api"
+import { LoadingSpinner } from "@/components/shared/loading-spinner"
+import { EmptyState } from "@/components/shared/empty-state"
 import { formatDate } from "@/lib/format"
 import Link from "next/link"
 
-const profile = {
-  name: "Alex Chen",
-  avatar: "/images.jpg",
-  bio: "Computer Science student passionate about AI and full-stack development",
-  location: "Freetown, Sierra Leone",
-  university: "Fourah Bay College",
-  major: "Computer Science",
-  email: "alex.chen@university.edu",
-  skillsMatchPercentage: 87,
-  verificationStatus: "verified" as const,
-}
-
-const workExperience = [
-  {
-    id: "1",
-    title: "Software Engineering Intern",
-    company: "Tech Solutions SL",
-    location: "Freetown, Sierra Leone",
-    startDate: "Jun 2024",
-    endDate: "Present",
-    description:
-      "Developing web applications using React and Node.js. Collaborated with senior developers on building scalable microservices architecture.",
-    skills: ["React", "Node.js", "MongoDB", "AWS"],
-  },
-  {
-    id: "2",
-    title: "Frontend Developer",
-    company: "Digital Innovations",
-    location: "Freetown, Sierra Leone",
-    startDate: "Jan 2024",
-    endDate: "May 2024",
-    description:
-      "Built responsive user interfaces and implemented modern design systems. Improved website performance by 40% through code optimization.",
-    skills: ["TypeScript", "Next.js", "Tailwind CSS", "Figma"],
-  },
-  {
-    id: "3",
-    title: "Research Assistant",
-    company: "Fourah Bay College",
-    location: "Freetown, Sierra Leone",
-    startDate: "Sep 2023",
-    endDate: "Dec 2023",
-    description:
-      "Assisted in AI research projects focused on natural language processing. Developed machine learning models for text classification.",
-    skills: ["Python", "TensorFlow", "Machine Learning", "Data Analysis"],
-  },
-]
-
 export default function ProfilePageClient() {
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const { data: profileData, loading, error } = useApi<{ user: any }>("/api/users/profile")
+
+  const user = profileData?.user
+  const profile = user?.learnerProfile
+  const skillsMatchPercentage = profile?.skillsMatchPercentage || 0
+  const verificationStatus = profile?.verificationStatus?.toLowerCase() || "unverified"
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <EmptyState
+        title="Error loading profile"
+        description={error.message || "Unable to load your profile. Please try again."}
+      />
+    )
+  }
+
+  if (!user) {
+    return (
+      <EmptyState
+        title="Profile not found"
+        description="Unable to load your profile. Please try again."
+      />
+    )
+  }
+
+  const initials = user.name
+    ?.split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "U"
 
   return (
     <>
@@ -91,7 +91,7 @@ export default function ProfilePageClient() {
                 <Download className="mr-2 h-4 w-4" />
                 Download Profile
               </Button>
-              <Button>
+              <Button onClick={() => setEditDialogOpen(true)}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Profile
               </Button>
@@ -105,10 +105,15 @@ export default function ProfilePageClient() {
             <div className="flex flex-col gap-6 md:flex-row md:items-start">
               <div className="relative">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={profile.avatar || "/placeholder.svg"} alt={profile.name} />
-                  <AvatarFallback>{profile.name[0]}</AvatarFallback>
+                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                  <AvatarFallback className="text-xl">{initials}</AvatarFallback>
                 </Avatar>
-                <Button size="icon" variant="secondary" className="absolute bottom-0 right-0 h-8 w-8 rounded-full">
+                <Button 
+                  size="icon" 
+                  variant="secondary" 
+                  className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
+                  onClick={() => setEditDialogOpen(true)}
+                >
                   <Camera className="h-4 w-4" />
                 </Button>
               </div>
@@ -116,40 +121,121 @@ export default function ProfilePageClient() {
               <div className="flex-1 space-y-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold">{profile.name}</h2>
-                    {profile.verificationStatus === "verified" && (
+                    <h2 className="text-2xl font-bold">{user.name || "User"}</h2>
+                    {verificationStatus === "verified" && (
                       <Badge variant="default" className="gap-1 bg-success text-success-foreground">
                         <Check className="h-3 w-3" />
                         Verified
                       </Badge>
                     )}
                   </div>
-                  <p className="text-muted-foreground">{profile.bio}</p>
+                  {profile?.bio ? (
+                    <p className="text-muted-foreground">{profile.bio}</p>
+                  ) : (
+                    <p className="text-muted-foreground italic">No bio yet. Click Edit Profile to add one.</p>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <GraduationCap className="h-4 w-4" />
-                    <span>
-                      {profile.major} at {profile.university}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    <span>{profile.location}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Mail className="h-4 w-4" />
-                    <span>{profile.email}</span>
-                  </div>
+                  {profile?.currentJobTitle && profile?.currentCompany ? (
+                    <div className="flex items-center gap-1">
+                      <Briefcase className="h-4 w-4" />
+                      <span>
+                        {profile.currentJobTitle} at {profile.currentCompany}
+                      </span>
+                    </div>
+                  ) : profile?.currentJobTitle ? (
+                    <div className="flex items-center gap-1">
+                      <Briefcase className="h-4 w-4" />
+                      <span>{profile.currentJobTitle}</span>
+                    </div>
+                  ) : null}
+                  {profile?.major ? (
+                    <div className="flex items-center gap-1">
+                      <GraduationCap className="h-4 w-4" />
+                      <span>
+                        {profile.major}{profile?.university ? ` at ${profile.university}` : ""}
+                      </span>
+                    </div>
+                  ) : profile?.university ? (
+                    <div className="flex items-center gap-1">
+                      <GraduationCap className="h-4 w-4" />
+                      <span>{profile.university}</span>
+                    </div>
+                  ) : null}
+                  {profile?.location && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      <span>{profile.location}</span>
+                    </div>
+                  )}
+                  {user.email && (
+                    <div className="flex items-center gap-1">
+                      <Mail className="h-4 w-4" />
+                      <span>{user.email}</span>
+                    </div>
+                  )}
+                  {profile?.phone && (
+                    <div className="flex items-center gap-1">
+                      <Phone className="h-4 w-4" />
+                      <span>{profile.phone}</span>
+                    </div>
+                  )}
                 </div>
+
+                {/* Show message if no profile info */}
+                {!profile?.bio && !profile?.location && !profile?.currentJobTitle && !profile?.major && !profile?.university && (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Your profile is empty. Click <strong>Edit Profile</strong> to add your information.
+                    </p>
+                  </div>
+                )}
+
+                {/* Social Links */}
+                {(profile?.linkedinUrl || profile?.githubUrl || profile?.portfolioUrl || profile?.website) && (
+                  <div className="flex flex-wrap gap-3">
+                    {profile?.linkedinUrl && (
+                      <Link href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <Linkedin className="h-4 w-4" />
+                          LinkedIn
+                        </Button>
+                      </Link>
+                    )}
+                    {profile?.githubUrl && (
+                      <Link href={profile.githubUrl} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <Github className="h-4 w-4" />
+                          GitHub
+                        </Button>
+                      </Link>
+                    )}
+                    {profile?.portfolioUrl && (
+                      <Link href={profile.portfolioUrl} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <LinkIcon className="h-4 w-4" />
+                          Portfolio
+                        </Button>
+                      </Link>
+                    )}
+                    {profile?.website && (
+                      <Link href={profile.website} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <Globe className="h-4 w-4" />
+                          Website
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-sm font-medium">Skills Match</span>
-                    <span className="text-sm font-bold text-primary">{profile.skillsMatchPercentage}%</span>
+                    <span className="text-sm font-bold text-primary">{skillsMatchPercentage}%</span>
                   </div>
-                  <Progress value={profile.skillsMatchPercentage} className="h-2" />
+                  <Progress value={skillsMatchPercentage} className="h-2" />
                 </div>
               </div>
             </div>
@@ -467,6 +553,7 @@ export default function ProfilePageClient() {
       </div>
 
       <DownloadProfileDialog open={downloadDialogOpen} onOpenChange={setDownloadDialogOpen} />
+      <EditProfileDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} />
     </>
   )
 }
