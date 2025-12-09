@@ -23,8 +23,19 @@ export function useApi<T>(endpoint: string | null, options?: { enabled?: boolean
         const result = response.data || response
         setData(result)
       })
-      .catch((err) => {
-        setError(err)
+      .catch((err: any) => {
+        // Extract error message from ApiError or use default
+        let error: Error
+        if (err instanceof Error) {
+          error = err
+        } else if (err?.message) {
+          error = new Error(err.message)
+        } else if (typeof err === 'string') {
+          error = new Error(err)
+        } else {
+          error = new Error("An error occurred")
+        }
+        setError(error)
         setData(null)
       })
       .finally(() => {
@@ -42,8 +53,18 @@ export function useApi<T>(endpoint: string | null, options?: { enabled?: boolean
       const response: any = await apiGet<T>(endpoint)
       const result = response.data || response
       setData(result)
-    } catch (err) {
-      setError(err as Error)
+    } catch (err: any) {
+      let error: Error
+      if (err instanceof Error) {
+        error = err
+      } else if (err?.message) {
+        error = new Error(err.message)
+      } else if (typeof err === 'string') {
+        error = new Error(err)
+      } else {
+        error = new Error("An error occurred")
+      }
+      setError(error)
       setData(null)
     } finally {
       setLoading(false)

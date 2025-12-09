@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAuth, getUserId } from "@/lib/middleware"
+import { requireAuth, getUserId, AuthError } from "@/lib/middleware"
 import { db } from "@/lib/db"
 
 export async function GET(request: NextRequest) {
   try {
+    console.log("Profile API - Starting request")
+    
     const session = await requireAuth(request)
+    console.log("Profile API - Session obtained:", !!session)
+    
     const userId = getUserId(session)
+    console.log("Profile API - User ID:", userId)
+    console.log("Profile API - Session user:", JSON.stringify(session?.user, null, 2))
 
     let user = await db.user.findUnique({
       where: { id: userId },
@@ -38,8 +44,52 @@ export async function GET(request: NextRequest) {
     })
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+      console.error("Profile API - User not found for ID:", userId)
+      // Try to find user by email as fallback
+      const sessionUser = session?.user
+      if (sessionUser?.email) {
+        console.log("Profile API - Trying to find user by email:", sessionUser.email)
+        const userByEmail = await db.user.findUnique({
+          where: { email: sessionUser.email },
+          include: { 
+            learnerProfile: true,
+            userSkills: {
+              include: {
+                skill: true,
+              },
+            },
+            credentials: {
+              include: {
+                credentialSkills: {
+                  include: {
+                    skill: true,
+                  },
+                },
+              },
+            },
+            projects: {
+              include: {
+                projectSkills: {
+                  include: {
+                    skill: true,
+                  },
+                },
+              },
+            },
+          },
+        })
+        if (userByEmail) {
+          console.log("Profile API - Found user by email:", userByEmail.email)
+          user = userByEmail
+        }
+      }
+      
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 })
+      }
     }
+    
+    console.log("Profile API - User found:", user.email)
 
     // If learner profile doesn't exist, create it
     if (!user.learnerProfile) {
@@ -95,13 +145,19 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ user })
   } catch (error: any) {
-    if (error.status === 401) {
-      return error
+    // Handle authentication errors
+    if (error instanceof AuthError) {
+      console.error("Profile API - Auth error:", error.message)
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
     }
     console.error("Profile fetch error:", error)
+    console.error("Profile fetch error stack:", error.stack)
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+      { error: error.message || "Internal server error" },
+      { status: error.status || 500 }
     )
   }
 }
@@ -176,13 +232,17 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ user })
   } catch (error: any) {
-    if (error.status === 401) {
-      return error
+    // Handle authentication errors
+    if (error instanceof AuthError) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
     }
     console.error("Profile update error:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+      { error: error.message || "Internal server error" },
+      { status: error.status || 500 }
     )
   }
 }

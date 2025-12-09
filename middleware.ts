@@ -8,6 +8,7 @@ export default auth(async (req) => {
   const isOnboardingPage = pathname.startsWith("/onboarding")
   const isApiRoute = pathname.startsWith("/api")
   const isPublicRoute = pathname.startsWith("/public")
+  const isRoot = pathname === "/"
 
   // Allow public routes and API routes
   if (isPublicRoute || isApiRoute) {
@@ -19,8 +20,8 @@ export default auth(async (req) => {
     return NextResponse.redirect(new URL("/", req.url))
   }
 
-  // Protect dashboard routes - require authentication
-  if (!isAuthPage && !isOnboardingPage && !req.auth) {
+  // Redirect unauthenticated users from root and dashboard routes to signin
+  if ((isRoot || (!isAuthPage && !isOnboardingPage)) && !req.auth) {
     return NextResponse.redirect(new URL("/auth/signin", req.url))
   }
 

@@ -22,6 +22,7 @@ export async function apiRequest<T>(
 
   const response = await fetch(url, {
     ...options,
+    credentials: "include", // Include cookies for authentication
     headers: {
       "Content-Type": "application/json",
       ...options.headers,

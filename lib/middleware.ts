@@ -2,17 +2,32 @@ import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-export async function requireAuth(request: NextRequest) {
-  const session = await auth()
-
-  if (!session?.user) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    )
+export class AuthError extends Error {
+  constructor(message: string = "Unauthorized") {
+    super(message)
+    this.name = "AuthError"
   }
+}
 
-  return session
+export async function requireAuth(request: NextRequest) {
+  try {
+    const session = await auth()
+    
+    if (!session?.user) {
+      console.error("requireAuth - No session or user found")
+      throw new AuthError("Unauthorized")
+    }
+    
+    console.log("requireAuth - Session found:", {
+      userId: session.user?.id,
+      email: session.user?.email,
+    })
+    
+    return session
+  } catch (error: any) {
+    console.error("requireAuth - Error:", error)
+    throw error instanceof AuthError ? error : new AuthError("Unauthorized")
+  }
 }
 
 export function getUserId(session: any): string {

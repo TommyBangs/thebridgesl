@@ -55,10 +55,25 @@ export default function ProfilePageClient() {
   }
 
   if (error) {
+    console.error("Profile error:", error)
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : typeof error === 'string' 
+      ? error 
+      : "Unable to load your profile. Please try again."
+    
+    // Check if it's a 404 error (user not found)
+    const is404 = errorMessage.toLowerCase().includes("not found") || 
+                  errorMessage.toLowerCase().includes("404")
+    
     return (
       <EmptyState
-        title="Error loading profile"
-        description={error.message || "Unable to load your profile. Please try again."}
+        title={is404 ? "Profile not found" : "Error loading profile"}
+        description={
+          is404 
+            ? "Your profile could not be found. Please try logging out and back in, or contact support if the issue persists."
+            : errorMessage
+        }
       />
     )
   }
