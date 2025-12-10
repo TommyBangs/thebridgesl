@@ -1,85 +1,51 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAuth, getUserId, AuthError } from "@/lib/middleware"
+import { requireAuth, getUserId } from "@/lib/middleware"
 import { db } from "@/lib/db"
 
+export const runtime = "nodejs"
+
 export async function GET(request: NextRequest) {
-  try {
-    const session = await requireAuth(request)
-    const userId = getUserId(session)
+    try {
+        const session = await requireAuth(request)
+        const userId = getUserId(session)
 
-    const { searchParams } = new URL(request.url)
-    const filter = searchParams.get("filter") || "all"
+        const { searchParams } = new URL(request.url)
+        const unreadOnly = searchParams.get("unread") === "true"
 
-    const where: any = {
-      userId: userId,
+        const where: any = { userId }
+        if (unreadOnly) {
+            where.read = false
+        }
+
+        const notifications = await db.notification.findMany({
+            where,
+            orderBy: {
+                timestamp: "desc",
+            },
+            take: 100,
+        })
+
+        const formattedNotifications = notifications.map((notif: any) => ({
+            id: notif.id,
+            type: notif.type.toLowerCase(),
+            title: notif.title,
+            message: notif.message,
+            read: notif.read,
+            actionUrl: notif.actionUrl,
+            icon: notif.icon,
+            timestamp: notif.timestamp.toISOString(),
+        }))
+
+        return NextResponse.json({ notifications: formattedNotifications })
+    } catch (error: any) {
+        console.error("Notifications fetch error:", error)
+        if (error.status === 401) {
+            return error
+        }
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 }
+        )
     }
-
-    if (filter === "unread") {
-      where.read = false
-    }
-
-    const notifications = await db.notification.findMany({
-      where,
-      orderBy: {
-        timestamp: "desc",
-      },
-      take: 100,
-    })
-
-    return NextResponse.json({ notifications })
-  } catch (error: any) {
-    if (error instanceof AuthError) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-    console.error("Notifications fetch error:", error)
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: error.status || 500 }
-    )
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const session = await requireAuth(request)
-    const userId = getUserId(session)
-    const body = await request.json()
-
-    const { action } = body
-
-    if (action === "mark-all-read") {
-      await db.notification.updateMany({
-        where: {
-          userId: userId,
-          read: false,
-        },
-        data: {
-          read: true,
-        },
-      })
-
-      return NextResponse.json({ success: true, message: "All notifications marked as read" })
-    }
-
-    return NextResponse.json(
-      { error: "Invalid action" },
-      { status: 400 }
-    )
-  } catch (error: any) {
-    if (error instanceof AuthError) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-    console.error("Mark notifications as read error:", error)
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: error.status || 500 }
-    )
-  }
 }
 

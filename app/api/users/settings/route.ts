@@ -1,102 +1,87 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAuth, getUserId, AuthError } from "@/lib/middleware"
+import { requireAuth, getUserId } from "@/lib/middleware"
 import { db } from "@/lib/db"
+import { z } from "zod"
+
+export const runtime = "nodejs"
+
+const settingsSchema = z.object({
+    emailNotifications: z.boolean().optional(),
+    pushNotifications: z.boolean().optional(),
+    profileVisibility: z.enum(["public", "connections", "private"]).optional(),
+    showEmail: z.boolean().optional(),
+    showPhone: z.boolean().optional(),
+    language: z.string().optional(),
+    theme: z.enum(["light", "dark", "system"]).optional(),
+})
 
 export async function GET(request: NextRequest) {
-  try {
-    const session = await requireAuth(request)
-    const userId = getUserId(session)
+    try {
+        const session = await requireAuth(request)
+        const userId = getUserId(session)
 
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-        role: true,
-      },
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      )
+        // For now, return default settings
+        // In the future, you can add a user_settings table
+        return NextResponse.json({
+            settings: {
+                emailNotifications: true,
+                pushNotifications: true,
+                profileVisibility: "public",
+                showEmail: false,
+                showPhone: false,
+                language: "en",
+                theme: "system",
+            },
+        })
+    } catch (error: any) {
+        console.error("Get settings error:", error)
+        if (error.status === 401) {
+            return error
+        }
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 }
+        )
     }
-
-    // Return default settings (can be extended with a Settings model later)
-    return NextResponse.json({
-      settings: {
-        email: user.email,
-        name: user.name,
-        avatar: user.avatar,
-        emailNotifications: true, // Default
-        pushNotifications: true, // Default
-        profileVisibility: "PUBLIC", // Default
-      },
-    })
-  } catch (error: any) {
-    if (error instanceof AuthError) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-    console.error("Settings fetch error:", error)
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: error.status || 500 }
-    )
-  }
 }
 
 export async function PUT(request: NextRequest) {
-  try {
-    const session = await requireAuth(request)
-    const userId = getUserId(session)
-    const body = await request.json()
+    try {
+        const session = await requireAuth(request)
+        const userId = getUserId(session)
 
-    const { name, email, avatar, emailNotifications, pushNotifications, profileVisibility } = body
+        const body = await request.json()
+        const settings = settingsSchema.parse(body)
 
-    const updateData: any = {}
-    if (name !== undefined) updateData.name = name
-    if (email !== undefined) updateData.email = email
-    if (avatar !== undefined) updateData.avatar = avatar
+        // For now, just return success
+        // In the future, you can add a user_settings table to persist these
+        // Example:
+        // await db.userSettings.upsert({
+        //   where: { userId },
+        //   update: settings,
+        //   create: { userId, ...settings },
+        // })
 
-    await db.user.update({
-      where: { id: userId },
-      data: updateData,
-    })
-
-    // Settings like emailNotifications, pushNotifications, profileVisibility
-    // can be stored in a separate Settings model or in user preferences JSON field
-    // For now, we'll just update the basic user fields
-
-    return NextResponse.json({
-      success: true,
-      message: "Settings updated successfully",
-      settings: {
-        name: updateData.name,
-        email: updateData.email,
-        avatar: updateData.avatar,
-        emailNotifications: emailNotifications ?? true,
-        pushNotifications: pushNotifications ?? true,
-        profileVisibility: profileVisibility ?? "PUBLIC",
-      },
-    })
-  } catch (error: any) {
-    if (error instanceof AuthError) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+        return NextResponse.json({
+            success: true,
+            message: "Settings updated",
+            settings,
+        })
+    } catch (error: any) {
+        console.error("Update settings error:", error)
+        if (error.status === 401) {
+            return error
+        }
+        if (error instanceof z.ZodError) {
+            return NextResponse.json(
+                { error: "Invalid settings data", details: error.errors },
+                { status: 400 }
+            )
+        }
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 }
+        )
     }
-    console.error("Settings update error:", error)
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: error.status || 500 }
-    )
-  }
 }
 

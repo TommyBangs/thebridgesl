@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { Search, UserPlus, Users } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -8,82 +8,87 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { PageHeader } from "@/components/shared/page-header"
 import { Badge } from "@/components/ui/badge"
-import { useApi } from "@/lib/hooks/use-api"
-import { apiPost } from "@/lib/api-client"
-import { LoadingSpinner } from "@/components/shared/loading-spinner"
-import { EmptyState } from "@/components/shared/empty-state"
+import { useDebounce } from "@/hooks/use-debounce"
 import { toast } from "@/hooks/use-toast"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
+import { LoadingSpinner } from "@/components/shared/loading-spinner"
 
 export default function FindConnectionsPage() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set())
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<any>(null)
-  const [message, setMessage] = useState("")
-  const { data: suggestionsData, loading, error, refetch } = useApi<{ suggestions: any[] }>("/network/suggestions")
+  const [suggestions, setSuggestions] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [sendingRequest, setSendingRequest] = useState<Set<string>>(new Set())
+  const debouncedSearch = useDebounce(searchQuery, 500)
 
-  const filteredConnections = useMemo(() => {
-    if (!suggestionsData?.suggestions) return []
-    const suggestions = suggestionsData.suggestions
-    if (!searchQuery.trim()) return suggestions
-    
-    const query = searchQuery.toLowerCase()
-    return suggestions.filter(
-      (person: any) =>
-        person.name.toLowerCase().includes(query) ||
-        person.jobTitle?.toLowerCase().includes(query) ||
-        person.company?.toLowerCase().includes(query) ||
-        person.university?.toLowerCase().includes(query),
-    )
-  }, [suggestionsData, searchQuery])
+  useEffect(() => {
+    fetchSuggestions()
+  }, [debouncedSearch])
 
-  const handleConnect = (user: any) => {
-    setSelectedUser(user)
-    setIsDialogOpen(true)
+  const fetchSuggestions = async () => {
+    try {
+      setLoading(true)
+      const url = debouncedSearch
+        ? `/api/network/suggestions?search=${encodeURIComponent(debouncedSearch)}`
+        : "/api/network/suggestions"
+      const response = await fetch(url)
+      if (!response.ok) throw new Error("Failed to fetch suggestions")
+      const data = await response.json()
+      setSuggestions(data.suggestions || [])
+    } catch (error) {
+      console.error("Error fetching suggestions:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load suggestions",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleSendRequest = async () => {
-    if (!selectedUser) return
-    
+  const handleConnect = async (userId: string) => {
     try {
-      await apiPost("/network/requests", {
-        receiverId: selectedUser.id,
-        message: message || undefined,
+      setSendingRequest((prev) => new Set(prev).add(userId))
+      const response = await fetch("/api/network/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receiverId: userId }),
       })
-      setRequestedIds((prev) => new Set(prev).add(selectedUser.id))
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to send connection request")
+      }
+
       toast({
         title: "Connection request sent",
-        description: `Your request has been sent to ${selectedUser.name}`,
+        description: "Your connection request has been sent",
       })
-      setIsDialogOpen(false)
-      setMessage("")
-      setSelectedUser(null)
-      refetch()
+
+      // Remove from suggestions
+      setSuggestions((prev) => prev.filter((s) => s.id !== userId))
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Failed to send connection request",
         variant: "destructive",
       })
+    } finally {
+      setSendingRequest((prev) => {
+        const next = new Set(prev)
+        next.delete(userId)
+        return next
+      })
     }
   }
 
-  if (loading) {
+  if (loading && suggestions.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner />
+      <div className="space-y-8">
+        <PageHeader title="Find Connections" description="Discover and connect with professionals in your field" />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <LoadingSpinner />
+        </div>
       </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        title="Error loading suggestions"
-        description="Unable to load connection suggestions. Please try again."
-      />
     )
   }
 
@@ -102,15 +107,18 @@ export default function FindConnectionsPage() {
         />
       </div>
 
-      {filteredConnections.length === 0 ? (
-        <EmptyState
-          title="No suggestions found"
-          description={searchQuery ? "No connections match your search. Try different keywords." : "No connection suggestions available at the moment."}
-        />
+      {loading && suggestions.length > 0 ? (
+        <div className="flex items-center justify-center py-8">
+          <LoadingSpinner />
+        </div>
+      ) : suggestions.length === 0 ? (
+        <Card className="p-12 text-center">
+          <p className="text-muted-foreground">No connections found matching your search.</p>
+        </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredConnections.map((person: any) => {
-            const isRequested = requestedIds.has(person.id)
+          {suggestions.map((person) => {
+            const isSending = sendingRequest.has(person.id)
 
             return (
               <Card key={person.id}>
@@ -123,12 +131,12 @@ export default function FindConnectionsPage() {
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold truncate">{person.name}</h3>
-                        <p className="text-sm text-muted-foreground truncate">{person.jobTitle || person.role}</p>
+                        <p className="text-sm text-muted-foreground truncate">{person.role}</p>
                         <p className="text-xs text-muted-foreground truncate">{person.company || person.university}</p>
                       </div>
                     </div>
 
-                    {person.matchScore && (
+                    {person.matchScore > 0 && (
                       <Badge variant="secondary" className="bg-primary/10 text-primary">
                         {person.matchScore}% match
                       </Badge>
@@ -139,14 +147,14 @@ export default function FindConnectionsPage() {
                       <span>{person.mutualConnections} mutual connections</span>
                     </div>
 
-                    <Button 
-                      size="sm" 
-                      className="w-full" 
-                      onClick={() => handleConnect(person)} 
-                      disabled={isRequested}
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleConnect(person.id)}
+                      disabled={isSending}
                     >
-                      {isRequested ? (
-                        <>Request Sent</>
+                      {isSending ? (
+                        "Sending..."
                       ) : (
                         <>
                           <UserPlus className="mr-2 h-4 w-4" />
@@ -161,45 +169,6 @@ export default function FindConnectionsPage() {
           })}
         </div>
       )}
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Send Connection Request</DialogTitle>
-            <DialogDescription>Send a connection request to {selectedUser?.name}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex items-center gap-3">
-              <Avatar>
-                <AvatarImage src={selectedUser?.avatar || "/placeholder.svg"} alt={selectedUser?.name} />
-                <AvatarFallback>{selectedUser?.name?.[0]}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-medium">{selectedUser?.name}</p>
-                <p className="text-sm text-muted-foreground">{selectedUser?.jobTitle || selectedUser?.role}</p>
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Optional Message</label>
-              <Textarea
-                placeholder="Add a personal message (optional)..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={4}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">
-                Cancel
-              </Button>
-              <Button onClick={handleSendRequest} className="flex-1">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Send Request
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

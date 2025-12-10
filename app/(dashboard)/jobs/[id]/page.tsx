@@ -1,14 +1,31 @@
 import { notFound } from "next/navigation"
-import { mockAllJobs } from "@/lib/mock-data"
 import { JobDetailClient } from "./job-detail-client"
 
 export default async function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const job = mockAllJobs.find((j) => j.id === id)
 
-  if (!job) {
+  try {
+    const response = await fetch(
+      `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/opportunities/${id}`,
+      {
+        cache: "no-store",
+      }
+    )
+
+    if (!response.ok) {
+      notFound()
+    }
+
+    const data = await response.json()
+    const job = data.opportunity
+
+    if (!job) {
+      notFound()
+    }
+
+    return <JobDetailClient job={job} />
+  } catch (error) {
+    console.error("Error fetching job:", error)
     notFound()
   }
-
-  return <JobDetailClient job={job} />
 }

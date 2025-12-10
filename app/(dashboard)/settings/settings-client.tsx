@@ -10,42 +10,67 @@ import { PageHeader } from "@/components/shared/page-header"
 import { Separator } from "@/components/ui/separator"
 import { useState, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
-import { useApi } from "@/lib/hooks/use-api"
-import { apiPut } from "@/lib/api-client"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
-import { EmptyState } from "@/components/shared/empty-state"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function SettingsPageClient() {
   const [isSaving, setIsSaving] = useState(false)
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [pushNotifications, setPushNotifications] = useState(true)
-  const [profileVisibility, setProfileVisibility] = useState("PUBLIC")
-  
-  const { data: settingsData, loading, error } = useApi<{ settings: any }>("/users/settings")
+  const [loading, setLoading] = useState(true)
+  const [settings, setSettings] = useState({
+    emailNotifications: true,
+    pushNotifications: true,
+    profileVisibility: "public" as "public" | "connections" | "private",
+    showEmail: false,
+    showPhone: false,
+    language: "en",
+    theme: "system" as "light" | "dark" | "system",
+  })
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deletePassword, setDeletePassword] = useState("")
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
-  // Initialize form with loaded settings
   useEffect(() => {
-    if (settingsData?.settings) {
-      setName(settingsData.settings.name || "")
-      setEmail(settingsData.settings.email || "")
-      setEmailNotifications(settingsData.settings.emailNotifications ?? true)
-      setPushNotifications(settingsData.settings.pushNotifications ?? true)
-      setProfileVisibility(settingsData.settings.profileVisibility || "PUBLIC")
+    fetchSettings()
+  }, [])
+
+  const fetchSettings = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/users/settings")
+      if (!response.ok) throw new Error("Failed to fetch settings")
+      const data = await response.json()
+      if (data.settings) {
+        setSettings((prev) => ({ ...prev, ...data.settings }))
+      }
+    } catch (error) {
+      console.error("Error fetching settings:", error)
+    } finally {
+      setLoading(false)
     }
-  }, [settingsData])
+  }
 
   const handleSaveChanges = async () => {
-    setIsSaving(true)
     try {
-      await apiPut("/users/settings", {
-        name,
-        email,
-        emailNotifications,
-        pushNotifications,
-        profileVisibility,
+      setIsSaving(true)
+      const response = await fetch("/api/users/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
       })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to save settings")
+      }
+
       toast({
         title: "Settings saved",
         description: "Your account settings have been updated successfully.",
@@ -61,31 +86,73 @@ export default function SettingsPageClient() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <EmptyState
-        title="Error loading settings"
-        description="Unable to load settings. Please try again."
-      />
-    )
-  }
-
-  const handleDeleteAccount = () => {
-    if (confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+  const handleDeleteAccount = async () => {
+    if (!deleteConfirm) {
       toast({
-        title: "Account deletion requested",
-        description: "Your account deletion request has been received.",
+        title: "Please confirm",
+        description: "You must confirm account deletion",
         variant: "destructive",
       })
+      return
     }
+
+    if (!deletePassword) {
+      toast({
+        title: "Password required",
+        description: "Please enter your password to confirm",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setDeleting(true)
+      const response = await fetch("/api/users/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          password: deletePassword,
+          confirm: deleteConfirm,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to delete account")
+      }
+
+      toast({
+        title: "Account deleted",
+        description: "Your account has been deleted successfully.",
+      })
+
+      // Redirect to sign in after a delay
+      setTimeout(() => {
+        window.location.href = "/auth/signin"
+      }, 2000)
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete account",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleting(false)
+      setDeleteDialogOpen(false)
+      setDeletePassword("")
+      setDeleteConfirm(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <PageHeader title="Settings" description="Manage your account settings and preferences" />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <LoadingSpinner />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -105,27 +172,16 @@ export default function SettingsPageClient() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
-              <Input 
-                id="name" 
-                placeholder="Your name" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
+              <Input id="name" placeholder="Your name" disabled />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="your.email@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <Input id="email" type="email" placeholder="your.email@example.com" disabled />
             </div>
           </div>
-          <Button onClick={handleSaveChanges} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save Changes"}
-          </Button>
+          <p className="text-sm text-muted-foreground">
+            To update your name or email, please visit your profile page.
+          </p>
         </CardContent>
       </Card>
 
@@ -141,10 +197,13 @@ export default function SettingsPageClient() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Job Opportunities</Label>
-              <p className="text-sm text-muted-foreground">Receive notifications about new job matches</p>
+              <Label>Email Notifications</Label>
+              <p className="text-sm text-muted-foreground">Receive notifications via email</p>
             </div>
-            <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
+            <Switch
+              checked={settings.emailNotifications}
+              onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, emailNotifications: checked }))}
+            />
           </div>
           <Separator />
           <div className="flex items-center justify-between">
@@ -152,7 +211,10 @@ export default function SettingsPageClient() {
               <Label>Push Notifications</Label>
               <p className="text-sm text-muted-foreground">Receive push notifications</p>
             </div>
-            <Switch checked={pushNotifications} onCheckedChange={setPushNotifications} />
+            <Switch
+              checked={settings.pushNotifications}
+              onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, pushNotifications: checked }))}
+            />
           </div>
         </CardContent>
       </Card>
@@ -169,29 +231,63 @@ export default function SettingsPageClient() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Public Profile</Label>
-              <p className="text-sm text-muted-foreground">Make your profile visible to everyone</p>
+              <Label>Profile Visibility</Label>
+              <p className="text-sm text-muted-foreground">Control who can see your profile</p>
             </div>
-            <Switch checked={profileVisibility === "PUBLIC"} onCheckedChange={(checked) => setProfileVisibility(checked ? "PUBLIC" : "PRIVATE")} />
+            <div className="flex gap-2">
+              <Button
+                variant={settings.profileVisibility === "public" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSettings((prev) => ({ ...prev, profileVisibility: "public" }))}
+              >
+                Public
+              </Button>
+              <Button
+                variant={settings.profileVisibility === "connections" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSettings((prev) => ({ ...prev, profileVisibility: "connections" }))}
+              >
+                Connections
+              </Button>
+              <Button
+                variant={settings.profileVisibility === "private" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSettings((prev) => ({ ...prev, profileVisibility: "private" }))}
+              >
+                Private
+              </Button>
+            </div>
           </div>
           <Separator />
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Show Skills</Label>
-              <p className="text-sm text-muted-foreground">Display your skills on your public profile</p>
+              <Label>Show Email</Label>
+              <p className="text-sm text-muted-foreground">Display your email on your public profile</p>
             </div>
-            <Switch defaultChecked />
+            <Switch
+              checked={settings.showEmail}
+              onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, showEmail: checked }))}
+            />
           </div>
           <Separator />
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Show Projects</Label>
-              <p className="text-sm text-muted-foreground">Display your projects on your public profile</p>
+              <Label>Show Phone</Label>
+              <p className="text-sm text-muted-foreground">Display your phone number on your public profile</p>
             </div>
-            <Switch defaultChecked />
+            <Switch
+              checked={settings.showPhone}
+              onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, showPhone: checked }))}
+            />
           </div>
         </CardContent>
       </Card>
+
+      <div className="flex justify-end">
+        <Button onClick={handleSaveChanges} disabled={isSaving}>
+          {isSaving ? "Saving..." : "Save Changes"}
+        </Button>
+      </div>
 
       {/* Danger Zone */}
       <Card className="border-destructive">
@@ -205,12 +301,56 @@ export default function SettingsPageClient() {
               <p className="font-medium">Delete Account</p>
               <p className="text-sm text-muted-foreground">Permanently delete your account and all data</p>
             </div>
-            <Button variant="destructive" onClick={handleDeleteAccount}>
+            <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
               Delete Account
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Account</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete your account and all associated data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="delete-password">Enter your password to confirm</Label>
+              <Input
+                id="delete-password"
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Your password"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="delete-confirm"
+                checked={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.checked)}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="delete-confirm" className="text-sm">
+                I understand this action cannot be undone
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleting || !deleteConfirm}>
+              {deleting ? "Deleting..." : "Delete Account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
+
