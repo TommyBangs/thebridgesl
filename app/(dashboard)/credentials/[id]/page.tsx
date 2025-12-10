@@ -1,12 +1,5 @@
 import { notFound } from "next/navigation"
 import CredentialViewClient from "./credential-client"
-import { mockCredentials } from "@/lib/mock-data"
-
-export function generateStaticParams() {
-  return mockCredentials.map((credential) => ({
-    id: credential.id,
-  }))
-}
 
 export default async function CredentialViewPage({
   params,
@@ -14,11 +7,26 @@ export default async function CredentialViewPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const credential = mockCredentials.find((c) => c.id === id)
 
-  if (!credential) {
+  try {
+    const response = await fetch(`${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/credentials/${id}`, {
+      cache: "no-store",
+    })
+
+    if (!response.ok) {
+      notFound()
+    }
+
+    const data = await response.json()
+    const credential = data.credential
+
+    if (!credential) {
+      notFound()
+    }
+
+    return <CredentialViewClient credential={credential} />
+  } catch (error) {
+    console.error("Error fetching credential:", error)
     notFound()
   }
-
-  return <CredentialViewClient credential={credential} />
 }
