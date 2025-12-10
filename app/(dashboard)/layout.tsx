@@ -1,10 +1,18 @@
 import type React from "react"
+import { redirect } from "next/navigation"
 import { Header } from "@/components/shared/header"
 import { Sidebar } from "@/components/shared/sidebar"
 import { MobileNav } from "@/components/shared/mobile-nav"
 import { ScrollToTop } from "@/components/shared/scroll-to-top"
+import { auth } from "@/lib/auth"
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth()
+
+  if (!session?.user) {
+    redirect("/auth/signin")
+  }
+
   return (
     <div className="relative min-h-screen">
       <ScrollToTop />
