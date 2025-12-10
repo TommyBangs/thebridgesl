@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, getUserId, AuthError } from "@/lib/middleware"
 import { db } from "@/lib/db"
 
+// Force Node.js runtime for this route (required for Prisma)
+export const runtime = "nodejs"
+
 export async function GET(request: NextRequest) {
   try {
     console.log("Profile API - Starting request")
+    console.log("Profile API - Request URL:", request.url)
+    console.log("Profile API - Request method:", request.method)
     
     // Get session with better error handling
     let session
@@ -72,8 +77,30 @@ export async function GET(request: NextRequest) {
       })
     } catch (dbError: any) {
       console.error("Profile API - Database error:", dbError)
+      console.error("Profile API - Database error details:", {
+        code: dbError?.code,
+        message: dbError?.message,
+        meta: dbError?.meta,
+      })
+      
+      // Provide more specific error messages based on error type
+      let errorMessage = "Unable to fetch user data. Please try again later."
+      if (dbError?.code === "P2024") {
+        errorMessage = "Database connection timeout. Please try again in a moment."
+      } else if (dbError?.code === "P1001") {
+        errorMessage = "Cannot reach database server. Please check your internet connection and try again."
+      } else if (dbError?.message?.includes("Can't reach database server")) {
+        errorMessage = "Cannot connect to the database. Please check your internet connection and ensure the database service is available."
+      } else if (dbError?.message) {
+        errorMessage = `Database error: ${dbError.message}`
+      }
+      
       return NextResponse.json(
-        { error: "Database error", message: "Unable to fetch user data. Please try again later." },
+        { 
+          error: "Database error", 
+          message: errorMessage,
+          code: dbError?.code,
+        },
         { status: 500 }
       )
     }
@@ -199,6 +226,43 @@ export async function GET(request: NextRequest) {
     // Catch-all error handler
     console.error("Profile API - Unexpected error:", error)
     console.error("Profile API - Error stack:", error?.stack)
+    console.error("Profile API - Error details:", {
+      name: error?.name,
+      code: error?.code,
+      message: error?.message,
+    })
+    
+    // Handle specific error types
+    if (error instanceof AuthError) {
+      return NextResponse.json(
+        { 
+          error: "Unauthorized",
+          message: "Please sign in to view your profile"
+        },
+        { status: 401 }
+      )
+    }
+    
+    // Handle Prisma errors
+    if (error?.code?.startsWith('P') || error?.message?.includes("Can't reach database server")) {
+      let errorMessage = "Database error occurred. Please try again later."
+      if (error.code === "P2024") {
+        errorMessage = "Database connection timeout. Please try again in a moment."
+      } else if (error.code === "P1001" || error?.message?.includes("Can't reach database server")) {
+        errorMessage = "Cannot connect to the database server. Please check:\n1. Your internet connection\n2. The database service is available\n3. Your DATABASE_URL in .env is correct\n4. No firewall is blocking the connection"
+      } else if (error.message) {
+        errorMessage = `Database error: ${error.message}`
+      }
+      
+      return NextResponse.json(
+        { 
+          error: "Database error",
+          message: errorMessage,
+          code: error.code || "P1001",
+        },
+        { status: 500 }
+      )
+    }
     
     // Ensure we always return valid JSON
     const errorMessage = error?.message || "Internal server error"

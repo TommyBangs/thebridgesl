@@ -11,6 +11,8 @@ export class AuthError extends Error {
 
 export async function requireAuth(request: NextRequest) {
   try {
+    // In NextAuth v5, auth() can be called without parameters in API routes
+    // It automatically uses the request context from the current execution
     const session = await auth()
     
     if (!session?.user) {

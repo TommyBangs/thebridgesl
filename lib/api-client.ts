@@ -20,6 +20,11 @@ export async function apiRequest<T>(
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "/api"
   const url = `${baseUrl}${endpoint}`
 
+  // Debug logging
+  if (process.env.NODE_ENV === "development") {
+    console.log("[API Client] Requesting:", url)
+  }
+
   const response = await fetch(url, {
     ...options,
     credentials: "include", // Include cookies for authentication
@@ -76,7 +81,21 @@ export async function apiRequest<T>(
       }
     }
     
-    const errorMessage = error.message || error.error || `HTTP ${response.status}: ${response.statusText}`
+    // Extract error message with better fallback
+    let errorMessage = error.message || error.error || `HTTP ${response.status}: ${response.statusText}`
+    
+    // If we have a more specific message from the API, use it
+    if (error.message && typeof error.message === 'string' && error.message.length > 0) {
+      errorMessage = error.message
+    } else if (error.error && typeof error.error === 'string' && error.error.length > 0) {
+      errorMessage = error.error
+    }
+    
+    // Provide user-friendly messages for common errors
+    if (response.status === 500 && !errorMessage.includes("Database") && !errorMessage.includes("Unable to fetch")) {
+      errorMessage = "A server error occurred. Please try again later."
+    }
+    
     throw new ApiError(response.status, errorMessage, error)
   }
 
