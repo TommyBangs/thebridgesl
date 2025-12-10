@@ -21,9 +21,9 @@ export default function HomePageClient() {
   const [addProjectOpen, setAddProjectOpen] = useState(false)
   const [verifySkillOpen, setVerifySkillOpen] = useState(false)
 
-  const { data: profileData, loading: profileLoading } = useApi<{ user: any }>("/api/users/profile")
-  const { data: skillsData, loading: skillsLoading } = useApi<{ skills: Skill[] }>("/api/skills?trending=true")
-  const { data: opportunitiesData, loading: opportunitiesLoading } = useApi<{ opportunities: Opportunity[] }>("/api/opportunities?limit=5")
+  const { data: profileData, loading: profileLoading } = useApi<{ user: any }>("/users/profile")
+  const { data: skillsData, loading: skillsLoading } = useApi<{ skills: Skill[] }>("/skills?trending=true")
+  const { data: opportunitiesData, loading: opportunitiesLoading } = useApi<{ opportunities: Opportunity[] }>("/opportunities?limit=5")
 
   const user = profileData?.user
   const trendingSkills = skillsData?.skills || []

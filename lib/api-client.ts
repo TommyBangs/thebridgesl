@@ -30,10 +30,54 @@ export async function apiRequest<T>(
   })
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      error: "An error occurred",
-    }))
-    throw new ApiError(response.status, error.error || error.message, error)
+    let error: any
+    const contentType = response.headers.get("content-type")
+    
+    // Try to parse JSON error response
+    if (contentType && contentType.includes("application/json")) {
+      try {
+        error = await response.json()
+      } catch (parseError) {
+        // If JSON parsing fails, create a generic error
+        error = {
+          error: `HTTP ${response.status}`,
+          message: response.statusText || "An error occurred",
+        }
+      }
+    } else {
+      // If response is not JSON, try to get text
+      try {
+        const text = await response.text()
+        // Check if it's an HTML error page (like Next.js 404 page)
+        if (text.trim().startsWith("<!DOCTYPE") || text.trim().startsWith("<html")) {
+          // Extract meaningful error from HTML or use status-based message
+          let message = `HTTP ${response.status}: ${response.statusText}`
+          if (response.status === 404) {
+            message = "The requested resource was not found. Please check the API endpoint."
+          } else if (response.status === 500) {
+            message = "Internal server error. Please try again later."
+          }
+          error = {
+            error: `HTTP ${response.status}`,
+            message: message,
+          }
+        } else {
+          error = {
+            error: `HTTP ${response.status}`,
+            message: text || response.statusText || "An error occurred",
+          }
+        }
+      } catch (textError) {
+        // If text parsing also fails, create generic error
+        error = {
+          error: `HTTP ${response.status}`,
+          message: response.statusText || "An error occurred",
+        }
+      }
+    }
+    
+    const errorMessage = error.message || error.error || `HTTP ${response.status}: ${response.statusText}`
+    throw new ApiError(response.status, errorMessage, error)
   }
 
   return response.json()

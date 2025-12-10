@@ -1,11 +1,13 @@
 "use client"
 
-import { Plus, Filter } from "lucide-react"
+import { Plus, Filter, Github, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { mockProjects } from "@/lib/mock-data"
+import { useApi } from "@/lib/hooks/use-api"
+import { LoadingSpinner } from "@/components/shared/loading-spinner"
+import { EmptyState } from "@/components/shared/empty-state"
 import { formatDate } from "@/lib/format"
 import { useState } from "react"
 import { AddProjectDialog } from "@/components/dialogs/add-project-dialog"
@@ -18,6 +20,9 @@ export function AppProjectsPageClient() {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [selectedProject, setSelectedProject] = useState<any>(null)
   const [isShareOpen, setIsShareOpen] = useState(false)
+  const { data: projectsData, loading, error, refetch } = useApi<{ projects: any[] }>("/projects")
+  
+  const projects = projectsData?.projects || []
 
   const handleShare = (project: any) => {
     setSelectedProject(project)
@@ -49,13 +54,37 @@ export function AppProjectsPageClient() {
       />
 
       {/* Projects Grid */}
-      <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">My Projects</h2>
-          <p className="text-sm text-muted-foreground">{mockProjects.length} projects</p>
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <LoadingSpinner />
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {mockProjects.map((project) => (
+      )}
+      
+      {error && (
+        <EmptyState
+          title="Error loading projects"
+          description={error instanceof Error ? error.message : "Unable to load projects. Please try again."}
+        />
+      )}
+      
+      {!loading && !error && (
+        <section>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold">My Projects</h2>
+            <p className="text-sm text-muted-foreground">{projects.length} project{projects.length !== 1 ? 's' : ''}</p>
+          </div>
+          {projects.length === 0 ? (
+            <EmptyState
+              title="No projects yet"
+              description="Start showcasing your work by adding your first project"
+              action={{
+                label: "Add Project",
+                onClick: () => setIsAddProjectOpen(true)
+              }}
+            />
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {projects.map((project) => (
             <Card key={project.id} className="overflow-hidden transition-shadow hover:shadow-lg">
               {project.media[0] && (
                 <div className="aspect-video w-full overflow-hidden bg-muted">
@@ -80,29 +109,52 @@ export function AppProjectsPageClient() {
                     <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {project.skills.slice(0, 4).map((skill) => (
-                      <Badge key={skill} variant="secondary" className="text-xs">
-                        {skill}
-                      </Badge>
-                    ))}
-                    {project.skills.length > 4 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{project.skills.length - 4}
-                      </Badge>
-                    )}
-                  </div>
+                  {project.projectSkills && project.projectSkills.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {project.projectSkills.slice(0, 4).map((ps: any) => (
+                        <Badge key={ps.skill.id} variant="secondary" className="text-xs">
+                          {ps.skill.name}
+                        </Badge>
+                      ))}
+                      {project.projectSkills.length > 4 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{project.projectSkills.length - 4}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span>
                       {formatDate(project.startDate)} - {project.endDate ? formatDate(project.endDate) : "Present"}
                     </span>
-                    {project.collaborators.length > 0 && (
+                    {project.collaborators && project.collaborators.length > 0 && (
                       <span>
                         {project.collaborators.length} collaborator{project.collaborators.length > 1 ? "s" : ""}
                       </span>
                     )}
                   </div>
+                  
+                  {(project.githubUrl || project.liveUrl) && (
+                    <div className="flex gap-2 mt-2">
+                      {project.githubUrl && (
+                        <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
+                          <Badge variant="outline" className="gap-1">
+                            <Github className="h-3 w-3" />
+                            Code
+                          </Badge>
+                        </a>
+                      )}
+                      {project.liveUrl && (
+                        <a href={project.liveUrl} target="_blank" rel="noopener noreferrer">
+                          <Badge variant="outline" className="gap-1">
+                            <ExternalLink className="h-3 w-3" />
+                            Live
+                          </Badge>
+                        </a>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex gap-2">
                     <Button
@@ -120,9 +172,11 @@ export function AppProjectsPageClient() {
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      </section>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Skill Validation CTA */}
       <Card className="border-primary bg-primary/5">

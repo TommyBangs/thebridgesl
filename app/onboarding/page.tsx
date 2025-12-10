@@ -133,12 +133,12 @@ export default function OnboardingPage() {
 
       // Only save profile data if user provided any information
       if (Object.keys(profileData).length > 0) {
-        await apiPut("/api/users/profile", profileData)
+        await apiPut("/users/profile", profileData)
       }
 
       // Mark onboarding as complete (optional - just for tracking)
       try {
-        await apiPut("/api/users/onboarding", { completed: true })
+        await apiPut("/users/onboarding", { completed: true })
       } catch {
         // Ignore errors - onboarding completion is optional
       }

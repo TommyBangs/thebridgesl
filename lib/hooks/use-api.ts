@@ -26,15 +26,19 @@ export function useApi<T>(endpoint: string | null, options?: { enabled?: boolean
       .catch((err: any) => {
         // Extract error message from ApiError or use default
         let error: Error
-        if (err instanceof Error) {
+        if (err instanceof ApiError) {
+          // Use the ApiError message directly
+          error = err
+        } else if (err instanceof Error) {
           error = err
         } else if (err?.message) {
           error = new Error(err.message)
         } else if (typeof err === 'string') {
           error = new Error(err)
         } else {
-          error = new Error("An error occurred")
+          error = new Error(err?.details?.message || err?.error || "An error occurred")
         }
+        console.error("useApi error:", error)
         setError(error)
         setData(null)
       })
@@ -55,15 +59,18 @@ export function useApi<T>(endpoint: string | null, options?: { enabled?: boolean
       setData(result)
     } catch (err: any) {
       let error: Error
-      if (err instanceof Error) {
+      if (err instanceof ApiError) {
+        error = err
+      } else if (err instanceof Error) {
         error = err
       } else if (err?.message) {
         error = new Error(err.message)
       } else if (typeof err === 'string') {
         error = new Error(err)
       } else {
-        error = new Error("An error occurred")
+        error = new Error(err?.details?.message || err?.error || "An error occurred")
       }
+      console.error("useApi refetch error:", error)
       setError(error)
       setData(null)
     } finally {

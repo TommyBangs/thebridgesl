@@ -90,34 +90,8 @@ export default function CareerClientPage() {
     setIsGenerating(false)
   }
 
-  const displayPathway = generatedPathway || [
-    {
-      stage: 1,
-      title: "Foundation",
-      description: "Building core skills and knowledge",
-      status: "current" as const,
-      progress: 100,
-    },
-    {
-      stage: 2,
-      title: "Learn Fundamentals",
-      description: "Master essential concepts and tools",
-      status: "current" as const,
-      progress: 65,
-    },
-    {
-      stage: 3,
-      title: "Gain Experience",
-      description: "Real-world projects and internships",
-      status: "upcoming" as const,
-    },
-    {
-      stage: 4,
-      title: "Build Expertise",
-      description: "Specialize and network professionally",
-      status: "future" as const,
-    },
-  ]
+  // Only show pathway if user has generated one
+  const displayPathway = generatedPathway || []
 
   return (
     <div className="space-y-8">
@@ -162,16 +136,17 @@ export default function CareerClientPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-primary" />
-            {generatedPathway ? `Your Path to ${careerGoal}` : "Pathway Explorer"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative space-y-0">
-            {displayPathway.map((step, index) => (
+      {displayPathway.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
+              Your Path to {careerGoal}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative space-y-0">
+              {displayPathway.map((step, index) => (
               <div key={index} className="relative flex gap-6 pb-8 last:pb-0">
                 {/* Stage Circle */}
                 <div className="relative flex flex-col items-center">
@@ -227,10 +202,23 @@ export default function CareerClientPage() {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {displayPathway.length === 0 && (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <Target className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="mb-2 text-lg font-semibold">No Career Path Generated</h3>
+            <p className="text-sm text-muted-foreground">
+              Enter a career goal above and click "Generate Path" to create your personalized roadmap
+            </p>
+          </CardContent>
+        </Card>
+      )}
       {/* </CHANGE> */}
 
       <section>

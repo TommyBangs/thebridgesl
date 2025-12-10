@@ -39,12 +39,20 @@ import Link from "next/link"
 export default function ProfilePageClient() {
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const { data: profileData, loading, error } = useApi<{ user: any }>("/api/users/profile")
+  const { data: profileData, loading, error } = useApi<{ user: any }>("/users/profile")
 
   const user = profileData?.user
   const profile = user?.learnerProfile
   const skillsMatchPercentage = profile?.skillsMatchPercentage || 0
   const verificationStatus = profile?.verificationStatus?.toLowerCase() || "unverified"
+  
+  // Get real data from API
+  const userSkills = user?.userSkills || []
+  const credentials = user?.credentials || []
+  const projects = user?.projects || []
+  
+  // Work experience can be derived from profile or be empty for now
+  const workExperience: any[] = []
 
   if (loading) {
     return (
@@ -56,21 +64,41 @@ export default function ProfilePageClient() {
 
   if (error) {
     console.error("Profile error:", error)
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : typeof error === 'string' 
-      ? error 
-      : "Unable to load your profile. Please try again."
+    
+    // Extract error message from various error types
+    let errorMessage = "Unable to load your profile. Please try again."
+    const errorAny = error as any
+    if (error instanceof Error) {
+      errorMessage = error.message || errorMessage
+    } else if (typeof error === 'string') {
+      errorMessage = error
+    } else if (errorAny?.message) {
+      errorMessage = errorAny.message
+    }
     
     // Check if it's a 404 error (user not found)
     const is404 = errorMessage.toLowerCase().includes("not found") || 
-                  errorMessage.toLowerCase().includes("404")
+                  errorMessage.toLowerCase().includes("404") ||
+                  errorAny?.status === 404
+    
+    // Check if it's a 401 error (unauthorized)
+    const is401 = errorMessage.toLowerCase().includes("unauthorized") ||
+                  errorMessage.toLowerCase().includes("authentication") ||
+                  errorAny?.status === 401
     
     return (
       <EmptyState
-        title={is404 ? "Profile not found" : "Error loading profile"}
+        title={
+          is401 
+            ? "Authentication required" 
+            : is404 
+            ? "Profile not found" 
+            : "Error loading profile"
+        }
         description={
-          is404 
+          is401
+            ? "Please sign in to view your profile."
+            : is404 
             ? "Your profile could not be found. Please try logging out and back in, or contact support if the issue persists."
             : errorMessage
         }
@@ -267,48 +295,56 @@ export default function ProfilePageClient() {
             </Button>
           </div>
           <div className="space-y-4">
-            {workExperience.map((experience) => (
-              <Card
-                key={experience.id}
-                className="animate-fade-in"
-                style={{ animationDelay: `${(experience.id - 1) * 100}ms` }}
-              >
-                <CardContent className="p-6">
-                  <div className="flex gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <Briefcase className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold">{experience.title}</h3>
-                          <p className="text-sm text-muted-foreground">{experience.company}</p>
-                        </div>
-                        {experience.endDate === "Present" && <Badge variant="secondary">Current</Badge>}
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>
-                            {experience.startDate} - {experience.endDate}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          <span>{experience.location}</span>
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{experience.description}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {experience.skills.map((skill) => (
-                          <SkillBadge key={skill} name={skill} size="sm" variant="secondary" />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+            {workExperience.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-sm text-muted-foreground">No work experience added yet.</p>
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              workExperience.map((experience) => (
+                <Card
+                  key={experience.id}
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${(experience.id - 1) * 100}ms` }}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        <Briefcase className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-semibold">{experience.title}</h3>
+                            <p className="text-sm text-muted-foreground">{experience.company}</p>
+                          </div>
+                          {experience.endDate === "Present" && <Badge variant="secondary">Current</Badge>}
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>
+                              {experience.startDate} - {experience.endDate}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            <span>{experience.location}</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{experience.description}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {experience.skills.map((skill: string) => (
+                            <SkillBadge key={skill} name={skill} size="sm" variant="secondary" />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </section>
 
@@ -322,149 +358,28 @@ export default function ProfilePageClient() {
             </Button>
           </div>
           <div className="grid gap-6">
-            {/* Technical Skills */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="mb-4 font-semibold text-foreground">Technical Skills</h3>
-                <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={95} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">React</span>
-                      <p className="text-xs text-muted-foreground">Expert</p>
-                      <p className="text-xs text-muted-foreground">12 endorsements</p>
-                    </div>
+            {/* User Skills */}
+            {userSkills.length > 0 ? (
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="mb-4 font-semibold text-foreground">Your Skills</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {userSkills.map((userSkill: any) => (
+                      <SkillBadge
+                        key={userSkill.skill.id}
+                        name={userSkill.skill.name}
+                      />
+                    ))}
                   </div>
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={88} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">Python</span>
-                      <p className="text-xs text-muted-foreground">Advanced</p>
-                      <p className="text-xs text-muted-foreground">8 endorsements</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={85} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">TypeScript</span>
-                      <p className="text-xs text-muted-foreground">Advanced</p>
-                      <p className="text-xs text-muted-foreground">10 endorsements</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={72} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">Node.js</span>
-                      <p className="text-xs text-muted-foreground">Intermediate</p>
-                      <p className="text-xs text-muted-foreground">5 endorsements</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* AI & Machine Learning */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="mb-4 font-semibold text-foreground">AI & Machine Learning</h3>
-                <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={75} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">TensorFlow</span>
-                      <p className="text-xs text-muted-foreground">Intermediate</p>
-                      <p className="text-xs text-muted-foreground">6 endorsements</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={82} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">Machine Learning</span>
-                      <p className="text-xs text-muted-foreground">Advanced</p>
-                      <p className="text-xs text-muted-foreground">9 endorsements</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={68} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">PyTorch</span>
-                      <p className="text-xs text-muted-foreground">Intermediate</p>
-                      <p className="text-xs text-muted-foreground">4 endorsements</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Cloud & DevOps */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="mb-4 font-semibold text-foreground">Cloud & DevOps</h3>
-                <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={80} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">AWS</span>
-                      <p className="text-xs text-muted-foreground">Advanced</p>
-                      <p className="text-xs text-muted-foreground">7 endorsements</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={70} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">Docker</span>
-                      <p className="text-xs text-muted-foreground">Intermediate</p>
-                      <p className="text-xs text-muted-foreground">5 endorsements</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={45} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">Kubernetes</span>
-                      <p className="text-xs text-muted-foreground">Beginner</p>
-                      <p className="text-xs text-muted-foreground">2 endorsements</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Soft Skills */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="mb-4 font-semibold text-foreground">Professional Skills</h3>
-                <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={90} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">Leadership</span>
-                      <p className="text-xs text-muted-foreground">15 endorsements</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={88} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">Communication</span>
-                      <p className="text-xs text-muted-foreground">12 endorsements</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={92} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">Problem Solving</span>
-                      <p className="text-xs text-muted-foreground">18 endorsements</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center space-y-2">
-                    <CircularProgress value={85} size="md" />
-                    <div className="text-center">
-                      <span className="text-sm font-medium">Teamwork</span>
-                      <p className="text-xs text-muted-foreground">14 endorsements</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-sm text-muted-foreground">No skills added yet. Click "Add Skill" to get started.</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </section>
 
@@ -476,38 +391,48 @@ export default function ProfilePageClient() {
               Add Credential
             </Button>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {mockCredentials.map((credential) => (
-              <Link key={credential.id} href={`/credentials/${credential.id}`}>
-                <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-lg">
-                  <CardContent className="p-6">
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-shrink-0 rounded-full bg-primary/10 p-3">
-                          <Award className="h-5 w-5 text-primary" />
+          {credentials.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className="text-sm text-muted-foreground">No credentials added yet.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {credentials.map((credential: any) => (
+                <Link key={credential.id} href={`/credentials/${credential.id}`}>
+                  <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-lg">
+                    <CardContent className="p-6">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-shrink-0 rounded-full bg-primary/10 p-3">
+                            <Award className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold">{credential.title}</h3>
+                            <p className="text-sm text-muted-foreground">{credential.issuer}</p>
+                          </div>
+                          {credential.verified && (
+                            <Badge variant="default" className="gap-1 bg-success text-success-foreground">
+                              <Check className="h-3 w-3" />
+                            </Badge>
+                          )}
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold">{credential.title}</h3>
-                          <p className="text-sm text-muted-foreground">{credential.issuer}</p>
-                        </div>
-                        {credential.verified && (
-                          <Badge variant="default" className="gap-1 bg-success text-success-foreground">
-                            <Check className="h-3 w-3" />
-                          </Badge>
+                        <p className="text-xs text-muted-foreground">Issued {formatDate(credential.issueDate)}</p>
+                        {credential.credentialSkills && credential.credentialSkills.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {credential.credentialSkills.slice(0, 3).map((cs: any) => (
+                              <SkillBadge key={cs.skill.id} name={cs.skill.name} size="sm" variant="secondary" />
+                            ))}
+                          </div>
                         )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">Issued {formatDate(credential.issueDate)}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {credential.skills.slice(0, 3).map((skill) => (
-                          <SkillBadge key={skill} name={skill} size="sm" variant="secondary" />
-                        ))}
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
               </Link>
             ))}
           </div>
+          )}
         </section>
 
         {/* Projects */}
@@ -518,52 +443,57 @@ export default function ProfilePageClient() {
               View All Projects
             </Button>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {mockProjects.map((project) => (
-              <Card key={project.id}>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{project.title}</h3>
-                        <p className="text-sm text-muted-foreground">{project.description}</p>
+          {projects.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className="text-sm text-muted-foreground">No projects added yet.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {projects.slice(0, 4).map((project: any) => (
+                <Card key={project.id}>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold">{project.title}</h3>
+                          <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
+                        </div>
                       </div>
-                      {project.verified && (
-                        <Badge variant="default" className="gap-1 bg-success text-success-foreground">
-                          <Check className="h-3 w-3" />
-                        </Badge>
+                      {project.projectSkills && project.projectSkills.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {project.projectSkills.map((ps: any) => (
+                            <SkillBadge key={ps.skill.id} name={ps.skill.name} size="sm" variant="secondary" />
+                          ))}
+                        </div>
+                      )}
+                      {(project.githubUrl || project.liveUrl) && (
+                        <div className="flex gap-2">
+                          {project.githubUrl && (
+                            <Button variant="outline" size="sm" className="flex-1 bg-transparent" asChild>
+                              <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="mr-2 h-3 w-3" />
+                                GitHub
+                              </a>
+                            </Button>
+                          )}
+                          {project.liveUrl && (
+                            <Button variant="outline" size="sm" className="flex-1 bg-transparent" asChild>
+                              <a href={project.liveUrl} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="mr-2 h-3 w-3" />
+                                Live Demo
+                              </a>
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {project.skills.map((skill) => (
-                        <SkillBadge key={skill} name={skill} size="sm" variant="secondary" />
-                      ))}
-                    </div>
-                    {(project.githubUrl || project.liveUrl) && (
-                      <div className="flex gap-2">
-                        {project.githubUrl && (
-                          <Button variant="outline" size="sm" className="flex-1 bg-transparent" asChild>
-                            <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="mr-2 h-3 w-3" />
-                              GitHub
-                            </a>
-                          </Button>
-                        )}
-                        {project.liveUrl && (
-                          <Button variant="outline" size="sm" className="flex-1 bg-transparent" asChild>
-                            <a href={project.liveUrl} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="mr-2 h-3 w-3" />
-                              Live Demo
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </section>
       </div>
 
