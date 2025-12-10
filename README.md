@@ -97,6 +97,7 @@ Find your next role:
 
 ## 🏗️ Architecture
 
+<<<<<<< HEAD
 ### System Architecture
 
 ```
@@ -132,16 +133,78 @@ Find your next role:
 │                    Database Layer                            │
 │                  PostgreSQL Database                         │
 └─────────────────────────────────────────────────────────────┘
+=======
+This section explains how the system is built.
+
+### 🏗️ Architecture Overview
+
+The application is now **Production-Ready** with full backend integration!
+*   **Frontend**: Modern Next.js 16 App Router with TypeScript
+*   **Backend**: Complete REST API with Next.js API routes
+*   **Database**: PostgreSQL with Prisma ORM
+*   **Authentication**: NextAuth.js with credentials provider
+*   **Data**: All data is persisted in a real database
+
+### 💻 Technology Stack
+
+We use modern, industry-standard tools:
+
+*   **Framework**: [Next.js 16](https://nextjs.org/) (App Router) - The engine running the website.
+*   **Language**: [TypeScript](https://www.typescriptlang.org/) - Adds strict rules to JavaScript to prevent bugs.
+*   **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) - For rapid, beautiful design.
+*   **UI Components**: [shadcn/ui](https://ui.shadcn.com/) - Reusable, accessible interface elements.
+*   **Icons**: [Lucide React](https://lucide.dev/) - Clean, consistent icons.
+
+### 📂 Project Structure
+
+Here is how the code is organized:
+
+```
+bridge-platform/
+├── app/                    # The main application code (Next.js App Router)
+│   ├── (dashboard)/        # Pages you see after logging in (Dashboard, Profile, etc.)
+│   ├── api/                # Backend API routes (REST API)
+│   ├── auth/               # Authentication pages (sign in, sign up)
+│   └── globals.css         # Global styles and design tokens
+├── components/             # Reusable building blocks
+│   ├── ui/                 # Buttons, Inputs, Cards (Basic elements)
+│   ├── dashboard/          # Complex blocks like "JobCard" or "SkillChart"
+│   ├── dialogs/            # Modal dialogs for forms
+│   └── providers/          # React context providers
+├── lib/                    # Helper functions and utilities
+│   ├── db.ts               # Prisma database client
+│   ├── auth.ts             # NextAuth configuration
+│   ├── api-client.ts       # API request utilities
+│   ├── middleware.ts       # Authentication middleware
+│   └── hooks/              # Custom React hooks
+├── prisma/                 # Database schema and migrations
+│   └── schema.prisma       # Prisma schema definition
+├── types/                  # TypeScript definitions (The "Shape" of our data)
+└── public/                 # Images and static files
+>>>>>>> main
 ```
 
 ### Data Flow
 
+<<<<<<< HEAD
 1. **User Request** → Frontend Component
 2. **Component** → API Route / Server Action
 3. **API/Action** → Service Layer (Business Logic)
 4. **Service** → Prisma Client (Data Access)
 5. **Prisma** → PostgreSQL Database
 6. **Response** flows back through the layers
+=======
+The system uses a comprehensive database schema with these core concepts:
+*   **Users**: The central entity with authentication and profiles.
+*   **Skills**: The currency of the platform with trending data.
+*   **Credentials**: Blockchain-verifiable proof of skills.
+*   **Opportunities**: Jobs/Internships with AI-powered matching.
+*   **Projects**: Portfolio projects with media and collaborators.
+*   **Applications**: Job application tracking.
+*   **Connections**: Professional networking.
+
+*For the full database schema, read `DATABASE_ARCHITECTURE.md`.*
+>>>>>>> main
 
 ---
 
@@ -176,6 +239,7 @@ Find your next role:
 ## 🚀 Getting Started
 
 ### Prerequisites
+<<<<<<< HEAD
 
 Before you begin, ensure you have the following installed:
 
@@ -183,9 +247,15 @@ Before you begin, ensure you have the following installed:
 - **PostgreSQL** 14 or higher ([Download](https://www.postgresql.org/download/))
 - **Git** ([Download](https://git-scm.com/))
 - **npm** or **pnpm** (comes with Node.js)
+=======
+*   **Node.js** (Version 18 or higher) installed.
+*   **PostgreSQL** database (local or cloud).
+*   **Git** installed.
+>>>>>>> main
 
-### Installation
+### Quick Setup
 
+<<<<<<< HEAD
 1. **Clone the repository**
    ```bash
    git clone https://github.com/TommyBangs/thebridgesl.git
@@ -772,11 +842,70 @@ See `DATABASE_ARCHITECTURE.md` for detailed database schema documentation.
 API documentation coming soon. For now, see:
 - `app/api/` - API route handlers
 - `lib/services/` - Service layer (business logic)
+=======
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/TommyBangs/thebridgesl.git
+    cd thebridgesl
+    ```
+
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
+
+3.  **Set up environment variables**:
+    ```bash
+    cp .env.example .env
+    # Edit .env with your database URL and NextAuth secret
+    ```
+
+4.  **Set up the database**:
+    ```bash
+    npm run db:generate
+    npm run db:push
+    ```
+
+5.  **Run the development server**:
+    ```bash
+    npm run dev
+    ```
+
+6.  **Open your browser**:
+    Go to [http://localhost:3000](http://localhost:3000) and sign up for an account!
+
+### Detailed Setup
+
+For detailed setup instructions, including database configuration and troubleshooting, see **[SETUP.md](./SETUP.md)**.
+>>>>>>> main
 
 ---
 
+## 🎯 Features
+
+### ✅ Implemented
+- User authentication (sign up, sign in)
+- User profiles with learner data
+- Skills management with trending data
+- Projects portfolio with media
+- Credentials management
+- Job opportunities with AI matching
+- Job applications
+- Protected routes and middleware
+- RESTful API with full CRUD operations
+- Database persistence with Prisma ORM
+
+### 🚧 Coming Soon
+- Network/connections features
+- Real-time notifications
+- File uploads for project media
+- Blockchain credential verification
+- Career path recommendations
+- Advanced search functionality
+
 ## 🤝 Contributing
 
+<<<<<<< HEAD
 We welcome contributions! Here's how you can help:
 
 1. **Fork the repository**
@@ -802,6 +931,12 @@ We welcome contributions! Here's how you can help:
 - Add tests for new features
 - Update documentation as needed
 - Ensure all checks pass
+=======
+We welcome contributions!
+1.  **Found a bug?** Open an issue.
+2.  **Want to add a feature?** Fork the repo, make changes, and open a Pull Request (PR).
+3.  **Need help?** Check [SETUP.md](./SETUP.md) or [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)
+>>>>>>> main
 
 ---
 

@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Bell, Search, Compass } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,8 +16,26 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Logo } from "./logo"
 import { ROUTES } from "@/lib/constants"
+import { useSession } from "@/lib/hooks/use-session"
+import { signOut } from "next-auth/react"
 
 export function Header() {
+  const router = useRouter()
+  const { user } = useSession()
+
+  const handleSignOut = async () => {
+    await signOut({ redirect: false })
+    router.push("/auth/signin")
+    router.refresh()
+  }
+
+  const initials = user?.name
+    ?.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "U"
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/80 backdrop-blur-sm">
       <div className="container mx-auto flex h-16 items-center gap-4 px-4">
@@ -48,8 +69,8 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src="/images.jpg" alt="User" />
-                    <AvatarFallback>AC</AvatarFallback>
+                    <AvatarImage src={user?.avatar || "/placeholder-user.jpg"} alt={user?.name || "User"} />
+                    <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                   <span className="sr-only">User menu</span>
                 </Button>
@@ -64,7 +85,7 @@ export function Header() {
                   <Link href={ROUTES.SETTINGS}>Settings</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Log out</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut}>Log out</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </nav>

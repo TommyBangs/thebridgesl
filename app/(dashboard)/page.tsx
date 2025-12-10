@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { userService } from "@/lib/services/user-service"
 import { skillService } from "@/lib/services/skill-service"
 import { opportunityService } from "@/lib/services/opportunity-service"
@@ -23,4 +24,10 @@ export default async function DashboardPage() {
       opportunities={opportunities}
     />
   )
+=======
+import HomePageClient from "./page-client"
+
+export default function HomePage() {
+  return <HomePageClient />
+>>>>>>> main
 }

@@ -98,7 +98,13 @@ export function OpportunityCard({ opportunity, onApply }: OpportunityCardProps) 
         </CardFooter>
       </Card>
 
-      <ApplyJobDialog open={applyDialogOpen} onOpenChange={setApplyDialogOpen} jobTitle={title} company={company} />
+      <ApplyJobDialog 
+        open={applyDialogOpen} 
+        onOpenChange={setApplyDialogOpen} 
+        jobTitle={title} 
+        company={company}
+        opportunityId={opportunity.id}
+      />
     </>
   )
 }

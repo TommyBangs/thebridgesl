@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Search, TrendingUp, Sparkles, Briefcase } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -9,49 +9,91 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { PageHeader } from "@/components/shared/page-header"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-const mockAllJobs = [
-  {
-    id: "1",
-    title: "Junior Software Engineer",
-    company: "Tech Innovations SL",
-    location: "Freetown, Sierra Leone",
-    type: "Full-time",
-    salary: "Le 800M - 1.2B",
-    match: 92,
-  },
-  {
-    id: "2",
-    title: "Data Analyst Intern",
-    company: "Digital Solutions",
-    location: "Remote",
-    type: "Internship",
-    salary: "Le 250K - 400K",
-    match: 87,
-  },
-  {
-    id: "3",
-    title: "Frontend Developer",
-    company: "Web Dynamics",
-    location: "Freetown, Sierra Leone",
-    type: "Contract",
-    salary: "Le 1M - 1.5B",
-    match: 89,
-  },
-]
-
-const mockAllSkills = [
-  { id: "1", name: "Machine Learning", demand: 95, growth: "+42%", openings: 8934 },
-  { id: "2", name: "React & Next.js", demand: 88, growth: "+28%", openings: 12453 },
-  { id: "3", name: "Cloud Architecture", demand: 85, growth: "+35%", openings: 5234 },
-  { id: "4", name: "Data Science", demand: 92, growth: "+38%", openings: 7621 },
-  { id: "5", name: "Cybersecurity", demand: 80, growth: "+30%", openings: 4521 },
-  { id: "6", name: "Mobile Development", demand: 78, growth: "+25%", openings: 6789 },
-]
+import { useDebounce } from "@/hooks/use-debounce"
+import { toast } from "@/hooks/use-toast"
+import { LoadingSpinner } from "@/components/shared/loading-spinner"
 
 export default function DiscoverPage() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [opportunities, setOpportunities] = useState<any[]>([])
+  const [skills, setSkills] = useState<any[]>([])
+  const [loading, setLoading] = useState({ opportunities: false, skills: false })
   const router = useRouter()
+  const debouncedSearch = useDebounce(searchQuery, 500)
+
+  useEffect(() => {
+    fetchOpportunities()
+    fetchSkills()
+  }, [])
+
+  useEffect(() => {
+    if (debouncedSearch) {
+      handleSearch()
+    } else {
+      fetchOpportunities()
+      fetchSkills()
+    }
+  }, [debouncedSearch])
+
+  const fetchOpportunities = async () => {
+    try {
+      setLoading((prev) => ({ ...prev, opportunities: true }))
+      const response = await fetch("/api/opportunities?limit=6")
+      if (!response.ok) throw new Error("Failed to fetch opportunities")
+      const data = await response.json()
+      setOpportunities(data.opportunities || [])
+    } catch (error) {
+      console.error("Error fetching opportunities:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load opportunities",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading((prev) => ({ ...prev, opportunities: false }))
+    }
+  }
+
+  const fetchSkills = async () => {
+    try {
+      setLoading((prev) => ({ ...prev, skills: true }))
+      const response = await fetch("/api/skills?trending=true")
+      if (!response.ok) throw new Error("Failed to fetch skills")
+      const data = await response.json()
+      setSkills(data.skills || [])
+    } catch (error) {
+      console.error("Error fetching skills:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load skills",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading((prev) => ({ ...prev, skills: false }))
+    }
+  }
+
+  const handleSearch = async () => {
+    if (!debouncedSearch || debouncedSearch.length < 2) return
+
+    try {
+      setLoading({ opportunities: true, skills: true })
+      const response = await fetch(`/api/search?q=${encodeURIComponent(debouncedSearch)}`)
+      if (!response.ok) throw new Error("Search failed")
+      const data = await response.json()
+      setOpportunities(data.opportunities || [])
+      setSkills(data.skills || [])
+    } catch (error) {
+      console.error("Search error:", error)
+      toast({
+        title: "Error",
+        description: "Search failed",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading({ opportunities: false, skills: false })
+    }
+  }
 
   const handleJobClick = (id: string) => {
     router.push(`/jobs/${id}`)
@@ -79,7 +121,7 @@ export default function DiscoverPage() {
             className="pl-10"
           />
         </div>
-        <Button>
+        <Button onClick={handleSearch}>
           <Search className="mr-2 h-4 w-4" />
           Search
         </Button>
@@ -94,71 +136,103 @@ export default function DiscoverPage() {
         </TabsList>
 
         <TabsContent value="opportunities" className="mt-6 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {mockAllJobs.slice(0, 6).map((job) => (
-              <Card
-                key={job.id}
-                className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
-                onClick={() => handleJobClick(job.id)}
-              >
-                <CardContent className="p-6">
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-shrink-0 rounded-full bg-primary/10 p-3">
-                        <Briefcase className="h-5 w-5 text-primary" />
+          {loading.opportunities ? (
+            <div className="flex items-center justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : opportunities.length === 0 ? (
+            <Card className="p-12 text-center">
+              <p className="text-muted-foreground">No opportunities found</p>
+            </Card>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {opportunities.map((job) => (
+                <Card
+                  key={job.id}
+                  className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
+                  onClick={() => handleJobClick(job.id)}
+                >
+                  <CardContent className="p-6">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-shrink-0 rounded-full bg-primary/10 p-3">
+                          <Briefcase className="h-5 w-5 text-primary" />
+                        </div>
+                        {job.matchScore && <Badge variant="secondary">{job.matchScore}% match</Badge>}
                       </div>
-                      <Badge variant="secondary">{job.match}% match</Badge>
+                      <div>
+                        <h3 className="font-semibold">{job.title}</h3>
+                        <p className="text-sm text-muted-foreground">{job.company}</p>
+                      </div>
+                      <div className="space-y-1 text-sm text-muted-foreground">
+                        <p>{job.location}</p>
+                        <p className="capitalize">{job.type}</p>
+                        {job.salaryMin && job.salaryMax && (
+                          <p className="font-medium text-success">
+                            Le {job.salaryMin.toLocaleString()} - {job.salaryMax.toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      <Button className="w-full" size="sm">
+                        Apply Now
+                      </Button>
                     </div>
-                    <div>
-                      <h3 className="font-semibold">{job.title}</h3>
-                      <p className="text-sm text-muted-foreground">{job.company}</p>
-                    </div>
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <p>{job.location}</p>
-                      <p>{job.type}</p>
-                      <p className="font-medium text-success">{job.salary}</p>
-                    </div>
-                    <Button className="w-full" size="sm">
-                      Apply Now
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="skills" className="mt-6 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {mockAllSkills.map((skill) => (
-              <Card
-                key={skill.id}
-                className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
-                onClick={() => handleSkillClick(skill.id)}
-              >
-                <CardContent className="p-6">
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-shrink-0 rounded-full bg-success/10 p-3">
-                        <TrendingUp className="h-5 w-5 text-success" />
+          {loading.skills ? (
+            <div className="flex items-center justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : skills.length === 0 ? (
+            <Card className="p-12 text-center">
+              <p className="text-muted-foreground">No skills found</p>
+            </Card>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {skills.map((skill) => (
+                <Card
+                  key={skill.id}
+                  className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
+                  onClick={() => handleSkillClick(skill.id)}
+                >
+                  <CardContent className="p-6">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-shrink-0 rounded-full bg-success/10 p-3">
+                          <TrendingUp className="h-5 w-5 text-success" />
+                        </div>
+                        {skill.trending?.growthRate && (
+                          <Badge variant="outline" className="text-success">
+                            +{skill.trending.growthRate}%
+                          </Badge>
+                        )}
                       </div>
-                      <Badge variant="outline" className="text-success">
-                        {skill.growth}
-                      </Badge>
+                      <div>
+                        <h3 className="font-semibold">{skill.name}</h3>
+                        {skill.trending?.demandPercentage && (
+                          <p className="text-sm text-muted-foreground">{skill.trending.demandPercentage}% market demand</p>
+                        )}
+                      </div>
+                      {skill.trending?.openPositions && (
+                        <p className="text-sm text-muted-foreground">
+                          {skill.trending.openPositions.toLocaleString()} open positions
+                        </p>
+                      )}
+                      <Button className="w-full bg-transparent" variant="outline" size="sm">
+                        Learn More
+                      </Button>
                     </div>
-                    <div>
-                      <h3 className="font-semibold">{skill.name}</h3>
-                      <p className="text-sm text-muted-foreground">{skill.demand}% market demand</p>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{skill.openings.toLocaleString()} open positions</p>
-                    <Button className="w-full bg-transparent" variant="outline" size="sm">
-                      Learn More
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="insights" className="mt-6 space-y-4">

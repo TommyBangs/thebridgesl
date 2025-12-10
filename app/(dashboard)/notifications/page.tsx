@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { Briefcase, Users, CheckCircle, FolderKanban, Award, TrendingUp, Clock, Check, Trash2 } from "lucide-react"
@@ -9,37 +9,132 @@ import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PageHeader } from "@/components/shared/page-header"
 import { cn } from "@/lib/utils"
-import { mockNotifications } from "@/lib/mock-data"
+import { toast } from "@/hooks/use-toast"
+import { LoadingSpinner } from "@/components/shared/loading-spinner"
 
-const iconMap = {
-  briefcase: Briefcase,
-  users: Users,
-  "check-circle": CheckCircle,
-  folder: FolderKanban,
-  award: Award,
-  "trending-up": TrendingUp,
-  clock: Clock,
+const iconMap: Record<string, any> = {
+  opportunity: Briefcase,
+  connection: Users,
+  skill: CheckCircle,
+  project: FolderKanban,
+  credential: Award,
+  trending: TrendingUp,
+  default: Clock,
 }
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(mockNotifications)
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "unread">("all")
+  const [processing, setProcessing] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    fetchNotifications()
+  }, [filter])
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true)
+      const url = filter === "unread" ? "/api/notifications?unread=true" : "/api/notifications"
+      const response = await fetch(url)
+      if (!response.ok) throw new Error("Failed to fetch notifications")
+      const data = await response.json()
+      setNotifications(data.notifications || [])
+    } catch (error) {
+      console.error("Error fetching notifications:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load notifications",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      setProcessing((prev) => new Set(prev).add(id))
+      const response = await fetch(`/api/notifications/${id}/read`, {
+        method: "PUT",
+      })
+
+      if (!response.ok) throw new Error("Failed to mark as read")
+
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to mark notification as read",
+        variant: "destructive",
+      })
+    } finally {
+      setProcessing((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    }
+  }
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      const response = await fetch("/api/notifications/read-all", {
+        method: "PUT",
+      })
+
+      if (!response.ok) throw new Error("Failed to mark all as read")
+
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+      toast({
+        title: "Success",
+        description: "All notifications marked as read",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to mark all notifications as read",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      setProcessing((prev) => new Set(prev).add(id))
+      // Note: Delete endpoint not implemented yet, so we'll just remove from state
+      setNotifications((prev) => prev.filter((n) => n.id !== id))
+      toast({
+        title: "Notification removed",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete notification",
+        variant: "destructive",
+      })
+    } finally {
+      setProcessing((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    }
+  }
 
   const unreadCount = notifications.filter((n) => !n.read).length
-
-  const handleMarkAsRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
-  }
-
-  const handleMarkAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-  }
-
-  const handleDelete = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
-  }
-
   const filteredNotifications = filter === "unread" ? notifications.filter((n) => !n.read) : notifications
+
+  if (loading && notifications.length === 0) {
+    return (
+      <div className="container mx-auto space-y-6 py-6">
+        <PageHeader title="Notifications" description="Stay updated with your latest activities and opportunities" />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <LoadingSpinner />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto space-y-6 py-6">
@@ -84,7 +179,9 @@ export default function NotificationsPage() {
           </Card>
         ) : (
           filteredNotifications.map((notification, index) => {
-            const Icon = iconMap[notification.icon as keyof typeof iconMap] || Briefcase
+            const Icon = iconMap[notification.type] || iconMap.default
+            const isProcessing = processing.has(notification.id)
+
             return (
               <Card
                 key={notification.id}
@@ -94,7 +191,7 @@ export default function NotificationsPage() {
                 )}
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <Link href={notification.actionUrl} className="block p-4">
+                <Link href={notification.actionUrl || "#"} className="block p-4">
                   <div className="flex gap-4">
                     <div
                       className={cn(
@@ -119,7 +216,7 @@ export default function NotificationsPage() {
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
                       <p className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
+                        {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
                       </p>
                     </div>
 
@@ -133,6 +230,7 @@ export default function NotificationsPage() {
                             e.preventDefault()
                             handleMarkAsRead(notification.id)
                           }}
+                          disabled={isProcessing}
                         >
                           <Check className="h-4 w-4" />
                           <span className="sr-only">Mark as read</span>
@@ -146,6 +244,7 @@ export default function NotificationsPage() {
                           e.preventDefault()
                           handleDelete(notification.id)
                         }}
+                        disabled={isProcessing}
                       >
                         <Trash2 className="h-4 w-4" />
                         <span className="sr-only">Delete</span>

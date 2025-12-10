@@ -10,6 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+<<<<<<< HEAD
 // Enums
 enum UserRole {
   student
@@ -117,11 +118,19 @@ enum NotificationType {
 
 model User {
   id            String    @id @default(cuid())
+=======
+model User {
+  id            String    @id @default(uuid())
+>>>>>>> main
   email         String    @unique
   name          String
   passwordHash  String    @map("password_hash")
   avatar        String?
+<<<<<<< HEAD
   role          UserRole
+=======
+  role          UserRole  @default(STUDENT)
+>>>>>>> main
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -131,6 +140,7 @@ model User {
   credentials         Credential[]
   projects            Project[]
   applications        Application[]
+<<<<<<< HEAD
   
   // Connections (Self-relation)
   connectionsSent     Connection[]  @relation("UserConnections")
@@ -164,10 +174,53 @@ model LearnerProfile {
   graduationYear        Int?               @map("graduation_year")
   skillsMatchPercentage Int                @default(0) @map("skills_match_percentage")
   verificationStatus    VerificationStatus @default(unverified) @map("verification_status")
+=======
+  connections         Connection[] @relation("UserConnections")
+  connectedUsers      Connection[] @relation("ConnectedUsers")
+  connectionRequests  ConnectionRequest[] @relation("SenderRequests")
+  receivedRequests    ConnectionRequest[] @relation("ReceiverRequests")
+  feedItems           FeedItem[]
+  notifications       Notification[]
+  careerPaths         CareerPath[]
+  sentMessages        Message[] @relation("SentMessages")
+  receivedMessages    Message[] @relation("ReceivedMessages")
+  verificationRequests VerificationRequest[] @relation("VerificationRequests")
+  projectCollaborators ProjectCollaborator[]
+  endorsements        Endorsement[] @relation("UserEndorsements")
+
+  @@map("users")
+}
+
+enum UserRole {
+  STUDENT
+  INSTITUTION
+  EMPLOYER
+}
+
+model LearnerProfile {
+  userId                String            @id @map("user_id")
+  bio                   String?
+  location              String?
+  phone                 String?
+  website               String?
+  university            String?
+  major                 String?
+  graduationYear        Int?              @map("graduation_year")
+  currentJobTitle       String?           @map("current_job_title")
+  currentCompany        String?           @map("current_company")
+  linkedinUrl           String?           @map("linkedin_url")
+  githubUrl             String?           @map("github_url")
+  portfolioUrl          String?           @map("portfolio_url")
+  skillsMatchPercentage Int               @default(0) @map("skills_match_percentage")
+  verificationStatus    VerificationStatus @default(UNVERIFIED) @map("verification_status")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+>>>>>>> main
 
   @@map("learner_profiles")
 }
 
+<<<<<<< HEAD
 model Skill {
   id          String        @id @default(cuid())
   name        String        @unique
@@ -200,11 +253,60 @@ model UserSkill {
   endorsements Int        @default(0)
   verified     Boolean    @default(false)
   addedAt      DateTime   @default(now()) @map("added_at")
+=======
+enum VerificationStatus {
+  VERIFIED
+  PENDING
+  UNVERIFIED
+}
+
+model Skill {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  category    SkillCategory
+  description String?
+  verified    Boolean  @default(false)
+  trending    Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  userSkills          UserSkill[]
+  credentialSkills    CredentialSkill[]
+  projectSkills       ProjectSkill[]
+  opportunitySkills   OpportunitySkill[]
+  courseSkills        CourseSkill[]
+  trendingData        TrendingSkill?
+  skillGaps           SkillGap[]
+
+  @@map("skills")
+}
+
+enum SkillCategory {
+  TECHNICAL
+  SOFT_SKILL
+  DOMAIN_KNOWLEDGE
+  TOOLS
+  LANGUAGES
+}
+
+model UserSkill {
+  id           String      @id @default(uuid())
+  userId       String       @map("user_id")
+  skillId      String       @map("skill_id")
+  level        SkillLevel
+  endorsements Int          @default(0)
+  verified     Boolean      @default(false)
+  addedAt      DateTime     @default(now()) @map("added_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+>>>>>>> main
 
   @@unique([userId, skillId])
   @@map("user_skills")
 }
 
+<<<<<<< HEAD
 model TrendingSkill {
   skillId          String   @id @map("skill_id")
   skill            Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
@@ -247,12 +349,69 @@ model CredentialSkill {
   credential   Credential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
   skillId      String     @map("skill_id")
   skill        Skill      @relation(fields: [skillId], references: [id], onDelete: Cascade)
+=======
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+model TrendingSkill {
+  skillId          String  @id @map("skill_id")
+  demandPercentage Decimal @db.Decimal(5, 2) @map("demand_percentage")
+  growthRate       Decimal @db.Decimal(5, 2) @map("growth_rate")
+  averageSalary    BigInt  @map("average_salary")
+  openPositions    Int     @map("open_positions")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@map("trending_skills")
+}
+
+model Credential {
+  id            String          @id @default(uuid())
+  userId        String          @map("user_id")
+  title         String
+  issuer        String
+  type          CredentialType
+  issueDate     DateTime        @map("issue_date") @db.Date
+  expiryDate    DateTime?       @map("expiry_date") @db.Date
+  verified      Boolean         @default(false)
+  blockchainHash String?        @map("blockchain_hash")
+  qrCode        String?         @map("qr_code")
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialSkills CredentialSkill[]
+  verificationRequests VerificationRequest[]
+
+  @@map("credentials")
+}
+
+enum CredentialType {
+  CERTIFICATION
+  DEGREE
+  BADGE
+  COURSE_COMPLETION
+  PROJECT
+}
+
+model CredentialSkill {
+  credentialId String @map("credential_id")
+  skillId      String @map("skill_id")
+
+  credential Credential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  skill      Skill      @relation(fields: [skillId], references: [id], onDelete: Cascade)
+>>>>>>> main
 
   @@id([credentialId, skillId])
   @@map("credential_skills")
 }
 
 model Project {
+<<<<<<< HEAD
   id          String            @id @default(cuid())
   userId      String            @map("user_id")
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -284,37 +443,102 @@ model ProjectMedia {
   id           String    @id @default(cuid())
   projectId    String    @map("project_id")
   project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+=======
+  id          String        @id @default(uuid())
+  userId      String        @map("user_id")
+  title       String
+  description String
+  visibility  Visibility
+  verified    Boolean       @default(false)
+  githubUrl   String?       @map("github_url")
+  liveUrl     String?       @map("live_url")
+  startDate   DateTime      @map("start_date") @db.Date
+  endDate     DateTime?     @map("end_date") @db.Date
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media             ProjectMedia[]
+  projectSkills     ProjectSkill[]
+  collaborators     ProjectCollaborator[]
+  endorsements      Endorsement[] @relation("ProjectEndorsements")
+
+  @@map("projects")
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+  CONNECTIONS
+}
+
+model ProjectMedia {
+  id           String      @id @default(uuid())
+  projectId    String      @map("project_id")
+>>>>>>> main
   type         MediaType
   url          String
   thumbnail    String?
   caption      String?
+<<<<<<< HEAD
   displayOrder Int       @default(0) @map("display_order")
+=======
+  displayOrder Int         @default(0) @map("display_order")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+>>>>>>> main
 
   @@map("project_media")
 }
 
+<<<<<<< HEAD
 model ProjectSkill {
   projectId String  @map("project_id")
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   skillId   String  @map("skill_id")
   skill     Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+=======
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+model ProjectSkill {
+  projectId String @map("project_id")
+  skillId   String @map("skill_id")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  skill   Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+>>>>>>> main
 
   @@id([projectId, skillId])
   @@map("project_skills")
 }
 
 model ProjectCollaborator {
+<<<<<<< HEAD
   projectId String   @map("project_id")
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   userId    String   @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   role      String?
   joinedAt  DateTime @default(now()) @map("joined_at")
+=======
+  projectId String    @map("project_id")
+  userId    String    @map("user_id")
+  role      String?
+  joinedAt  DateTime  @default(now()) @map("joined_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+>>>>>>> main
 
   @@id([projectId, userId])
   @@map("project_collaborators")
 }
 
+<<<<<<< HEAD
 // Endorsements - Simplified for Prisma (Linking to Project and Skill separately or using a generic approach)
 // Here implementing a generic-like structure but with specific optional relations for referential integrity
 model Endorsement {
@@ -367,21 +591,89 @@ model OpportunityRequirement {
   opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   requirement   String
   displayOrder  Int         @default(0) @map("display_order")
+=======
+model Endorsement {
+  id         String        @id @default(uuid())
+  targetId   String        @map("target_id")
+  targetType EndorsementTarget
+  endorserId String        @map("endorser_id")
+  comment    String?
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  endorser User @relation("UserEndorsements", fields: [endorserId], references: [id], onDelete: Cascade)
+  project  Project? @relation("ProjectEndorsements", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@map("endorsements")
+}
+
+enum EndorsementTarget {
+  PROJECT
+  SKILL
+}
+
+model Opportunity {
+  id            String      @id @default(uuid())
+  title         String
+  company       String
+  companyLogo   String?     @map("company_logo")
+  type          OpportunityType
+  location      String
+  remote        Boolean      @default(false)
+  description   String
+  salaryMin     BigInt?     @map("salary_min")
+  salaryMax     BigInt?     @map("salary_max")
+  postedDate    DateTime    @map("posted_date")
+  deadline      DateTime?   @db.Date
+  applicationUrl String?    @map("application_url")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  requirements OpportunityRequirement[]
+  opportunitySkills OpportunitySkill[]
+  applications Application[]
+
+  @@map("opportunities")
+}
+
+enum OpportunityType {
+  JOB
+  INTERNSHIP
+  PROJECT
+  FREELANCE
+  MENTORSHIP
+}
+
+model OpportunityRequirement {
+  id            String  @id @default(uuid())
+  opportunityId String  @map("opportunity_id")
+  requirement   String
+  displayOrder  Int     @default(0) @map("display_order")
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+>>>>>>> main
 
   @@map("opportunity_requirements")
 }
 
 model OpportunitySkill {
+<<<<<<< HEAD
   opportunityId String      @map("opportunity_id")
   opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   skillId       String      @map("skill_id")
   skill         Skill       @relation(fields: [skillId], references: [id], onDelete: Cascade)
+=======
+  opportunityId String @map("opportunity_id")
+  skillId       String @map("skill_id")
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  skill        Skill      @relation(fields: [skillId], references: [id], onDelete: Cascade)
+>>>>>>> main
 
   @@id([opportunityId, skillId])
   @@map("opportunity_skills")
 }
 
 model Application {
+<<<<<<< HEAD
   id            String            @id @default(cuid())
   userId        String            @map("user_id")
   user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -435,11 +727,87 @@ model FeedItem {
   type        FeedItemType
   userId      String       @map("user_id")
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+=======
+  id            String          @id @default(uuid())
+  userId        String          @map("user_id")
+  opportunityId String          @map("opportunity_id")
+  status        ApplicationStatus
+  coverLetter   String?         @map("cover_letter")
+  resumeUrl     String?         @map("resume_url")
+  appliedAt     DateTime        @default(now()) @map("applied_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, opportunityId])
+  @@map("applications")
+}
+
+enum ApplicationStatus {
+  APPLIED
+  VIEWED
+  SHORTLISTED
+  REJECTED
+  ACCEPTED
+}
+
+model Connection {
+  id                String          @id @default(uuid())
+  userId            String          @map("user_id")
+  connectedUserId    String          @map("connected_user_id")
+  type              ConnectionType
+  mutualConnections Int             @default(0) @map("mutual_connections")
+  connectedAt       DateTime        @default(now()) @map("connected_at")
+
+  user          User  @relation("UserConnections", fields: [userId], references: [id], onDelete: Cascade)
+  connectedUser User  @relation("ConnectedUsers", fields: [connectedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, connectedUserId])
+  @@map("connections")
+}
+
+enum ConnectionType {
+  PEER
+  ALUMNI
+  MENTOR
+  RECRUITER
+  COLLEAGUE
+}
+
+model ConnectionRequest {
+  id          String              @id @default(uuid())
+  senderId    String              @map("sender_id")
+  receiverId  String              @map("receiver_id")
+  message     String?
+  status      ConnectionRequestStatus
+  requestedAt DateTime            @default(now()) @map("requested_at")
+  respondedAt DateTime?           @map("responded_at")
+
+  sender   User @relation("SenderRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceiverRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@map("connection_requests")
+}
+
+enum ConnectionRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model FeedItem {
+  id          String      @id @default(uuid())
+  type        FeedItemType
+  userId      String      @map("user_id")
+>>>>>>> main
   priority    Priority
   title       String
   description String
   image       String?
   data        Json?
+<<<<<<< HEAD
   timestamp   DateTime     @default(now())
 
   @@map("feed_items")
@@ -450,6 +818,33 @@ model Notification {
   id        String           @id @default(cuid())
   userId    String           @map("user_id")
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+=======
+  timestamp   DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("feed_items")
+}
+
+enum FeedItemType {
+  OPPORTUNITY
+  SKILL_TRENDING
+  NETWORK_ACTIVITY
+  INSIGHT
+  RECOMMENDATION
+  ACHIEVEMENT
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+>>>>>>> main
   type      NotificationType
   title     String
   message   String
@@ -458,6 +853,7 @@ model Notification {
   icon      String?
   timestamp DateTime         @default(now())
 
+<<<<<<< HEAD
   @@map("notifications")
   @@index([userId, read])
 }
@@ -473,11 +869,39 @@ model CareerPath {
 
   nodes             CareerPathNode[]
   skillGaps         SkillGap[]
+=======
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  OPPORTUNITY
+  CONNECTION
+  SKILL
+  PROJECT
+  CREDENTIAL
+  TRENDING
+}
+
+model CareerPath {
+  id               String        @id @default(uuid())
+  userId           String        @map("user_id")
+  currentRole      String        @map("current_role")
+  targetRole       String        @map("target_role")
+  estimatedDuration Int         @map("estimated_duration")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nodes        CareerPathNode[]
+  skillGaps    SkillGap[]
+>>>>>>> main
 
   @@map("career_paths")
 }
 
 model CareerPathNode {
+<<<<<<< HEAD
   id           String     @id @default(cuid())
   careerPathId String     @map("career_path_id")
   careerPath   CareerPath @relation(fields: [careerPathId], references: [id], onDelete: Cascade)
@@ -485,52 +909,96 @@ model CareerPathNode {
   title        String
   duration     Int        // in months
   completed    Boolean    @default(false)
+=======
+  id           String    @id @default(uuid())
+  careerPathId String    @map("career_path_id")
+  stageNumber  Int       @map("stage_number")
+  title        String
+  duration     Int
+  completed    Boolean   @default(false)
+
+  careerPath CareerPath @relation(fields: [careerPathId], references: [id], onDelete: Cascade)
+>>>>>>> main
 
   @@map("career_path_nodes")
 }
 
 model SkillGap {
+<<<<<<< HEAD
   id           String     @id @default(cuid())
   careerPathId String     @map("career_path_id")
   careerPath   CareerPath @relation(fields: [careerPathId], references: [id], onDelete: Cascade)
   skillId      String     @map("skill_id")
   skill        Skill      @relation(fields: [skillId], references: [id], onDelete: Cascade)
+=======
+  id           String     @id @default(uuid())
+  careerPathId String     @map("career_path_id")
+  skillId      String     @map("skill_id")
+>>>>>>> main
   currentLevel SkillLevel @map("current_level")
   targetLevel  SkillLevel @map("target_level")
   priority     Priority
 
+<<<<<<< HEAD
+=======
+  careerPath CareerPath @relation(fields: [careerPathId], references: [id], onDelete: Cascade)
+  skill       Skill      @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+>>>>>>> main
   @@map("skill_gaps")
 }
 
 model Course {
+<<<<<<< HEAD
   id          String   @id @default(cuid())
+=======
+  id          String   @id @default(uuid())
+>>>>>>> main
   title       String
   provider    String
   description String
   thumbnail   String?
+<<<<<<< HEAD
   duration    Int      // in hours
+=======
+  duration    Int
+>>>>>>> main
   level       SkillLevel
   rating      Decimal  @default(0) @db.Decimal(3, 2)
   reviewCount Int      @default(0) @map("review_count")
   price       BigInt
   url         String
+<<<<<<< HEAD
 
   skills      CourseSkill[]
+=======
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  courseSkills CourseSkill[]
+>>>>>>> main
 
   @@map("courses")
 }
 
 model CourseSkill {
   courseId String @map("course_id")
+<<<<<<< HEAD
   course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   skillId  String @map("skill_id")
   skill    Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+=======
+  skillId  String @map("skill_id")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  skill  Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+>>>>>>> main
 
   @@id([courseId, skillId])
   @@map("course_skills")
 }
 
 model VerificationRequest {
+<<<<<<< HEAD
   id             String             @id @default(cuid())
   credentialId   String             @map("credential_id")
   credential     Credential         @relation(fields: [credentialId], references: [id], onDelete: Cascade)
@@ -544,20 +1012,54 @@ model VerificationRequest {
   blockchainHash String?            @map("blockchain_hash")
   requestedAt    DateTime           @default(now()) @map("requested_at")
   processedAt    DateTime?          @map("processed_at")
+=======
+  id            String                  @id @default(uuid())
+  credentialId  String                  @map("credential_id")
+  requestedBy   String                  @map("requested_by")
+  status        VerificationRequestStatus
+  requestedAt   DateTime               @default(now()) @map("requested_at")
+  processedAt   DateTime?              @map("processed_at")
+  blockchainHash String?               @map("blockchain_hash")
+
+  credential Credential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  requester  User      @relation("VerificationRequests", fields: [requestedBy], references: [id], onDelete: Cascade)
+>>>>>>> main
 
   @@map("verification_requests")
 }
 
+<<<<<<< HEAD
 model Message {
   id         String   @id @default(cuid())
   senderId   String   @map("sender_id")
   sender     User     @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
   receiverId String   @map("receiver_id")
   receiver   User     @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+=======
+enum VerificationRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  senderId   String   @map("sender_id")
+  receiverId String   @map("receiver_id")
+>>>>>>> main
   content    String
   read       Boolean  @default(false)
   sentAt     DateTime @default(now()) @map("sent_at")
 
+<<<<<<< HEAD
   @@map("messages")
   @@index([senderId, receiverId])
 }
+=======
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+>>>>>>> main
