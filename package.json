@@ -5,7 +5,7 @@
   "description": "A comprehensive learner platform connecting students with career opportunities through verified credentials and AI-powered navigation",
   "scripts": {
     "build": "prisma generate && next build",
-    "dev": "prisma generate && cross-env NEXT_PRIVATE_SKIP_TURBO=1 next dev",
+    "dev": "prisma generate && next dev",
     "lint": "eslint .",
     "start": "next start",
     "type-check": "tsc --noEmit",

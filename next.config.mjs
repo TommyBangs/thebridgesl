@@ -6,10 +6,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Force webpack instead of Turbopack to avoid WASM binding issues
-  webpack: (config, { isServer }) => {
-    return config
-  },
+  // Enable Turbopack explicitly to avoid deprecated middleware warning noise
+  // while keeping room for future Turbopack options if needed.
+  turbopack: {},
 }
 
 export default nextConfig
