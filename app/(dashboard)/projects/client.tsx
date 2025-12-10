@@ -11,7 +11,8 @@ import { useApi } from "@/lib/hooks/use-api"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import { EmptyState } from "@/components/shared/empty-state"
 import { formatDate } from "@/lib/format"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { AddProjectDialog } from "@/components/dialogs/add-project-dialog"
 import { VerifySkillDialog } from "@/components/dialogs/verify-skill-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -53,6 +54,7 @@ const formatImpactSnippet = (impactMetrics: any) => {
 }
 
 export function AppProjectsPageClient() {
+  const router = useRouter()
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false)
   const [isVerifySkillOpen, setIsVerifySkillOpen] = useState(false)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -62,9 +64,28 @@ export function AppProjectsPageClient() {
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [hasImpactFilter, setHasImpactFilter] = useState(false)
   const [hasMediaFilter, setHasMediaFilter] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const { data: projectsData, loading, error, refetch } = useApi<{ projects: any[] }>("/projects")
 
   const projects = projectsData?.projects || []
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768) // md breakpoint
+    }
+
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
+
+  const handleAddProject = () => {
+    if (isMobile) {
+      router.push("/projects/new")
+    } else {
+      setIsAddProjectOpen(true)
+    }
+  }
 
   const filteredProjects = useMemo(() => {
     return projects.filter((project) => {
@@ -119,7 +140,7 @@ export function AppProjectsPageClient() {
               <Filter className="mr-2 h-4 w-4" />
               Filter
             </Button>
-            <Button onClick={() => setIsAddProjectOpen(true)}>
+            <Button onClick={handleAddProject}>
               <Plus className="mr-2 h-4 w-4" />
               Add Project
             </Button>
