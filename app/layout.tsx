@@ -10,7 +10,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: {
-    default: "Bridge - Connect Your Skills to Opportunities",
+    default: "Bridge",
     template: "%s | Bridge",
   },
   description:
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   keywords: ["education", "career", "skills", "learning", "opportunities", "networking", "credentials", "blockchain"],
   authors: [{ name: "Bridge Team" }],
   creator: "Bridge",
-  generator: "v0.app",
+  generator: "TEAS Tech Foundations - Platform for Learning and Career Development",
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -33,20 +33,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
+      { url: "/bridge-logo.png" },
+      { url: "/icon-light-32x32.png", media: "(prefers-color-scheme: light)" },
+      { url: "/icon-dark-32x32.png", media: "(prefers-color-scheme: dark)" },
+      { url: "/icon.svg", type: "image/svg+xml" },
     ],
-    apple: "/apple-icon.png",
+    apple: "/bridge-logo.png",
   },
 }
 

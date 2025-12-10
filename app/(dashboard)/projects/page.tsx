@@ -2,7 +2,7 @@ import { AppProjectsPageClient } from "./client"
 
 export const metadata = {
   title: "Projects & Skills",
-  description: "Manage your portfolio and validate your skills",
+  description: "Share your work—software, design, research, events, services, products, builds, community projects.",
 }
 
 export default function ProjectsPage() {
