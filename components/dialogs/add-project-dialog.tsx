@@ -1,29 +1,13 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { X, ChevronDown, ChevronUp, Plus } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { apiPost } from "@/lib/api-client"
-import { useToast } from "@/hooks/use-toast"
-import { VALIDATION } from "@/lib/constants"
+import { ProjectForm } from "@/components/projects/project-form"
 
 interface AddProjectDialogProps {
   open: boolean
@@ -32,17 +16,24 @@ interface AddProjectDialogProps {
 }
 
 const PROJECT_CATEGORIES = [
-  { value: "software", label: "Software" },
-  { value: "design-creative", label: "Design/Creative" },
-  { value: "business", label: "Business/Entrepreneurship" },
-  { value: "research", label: "Research/Academic" },
-  { value: "trades", label: "Trades/Crafts" },
-  { value: "nonprofit", label: "Non-profit/Community" },
-  { value: "education", label: "Education/Training" },
-  { value: "health", label: "Health/Wellness" },
-  { value: "media", label: "Media/Content" },
-  { value: "product", label: "Product/Hardware" },
+  { value: "software", label: "Software", isTech: true },
+  { value: "design-creative", label: "Design/Creative", isTech: false },
+  { value: "business", label: "Business/Entrepreneurship", isTech: false },
+  { value: "research", label: "Research/Academic", isTech: false },
+  { value: "trades", label: "Trades/Crafts", isTech: false },
+  { value: "nonprofit", label: "Non-profit/Community", isTech: false },
+  { value: "education", label: "Education/Training", isTech: false },
+  { value: "health", label: "Health/Wellness", isTech: false },
+  { value: "media", label: "Media/Content", isTech: false },
+  { value: "product", label: "Product/Hardware", isTech: true },
+  { value: "other", label: "Other", isTech: false },
 ] as const
+
+// Helper to check if selected category is tech-related
+const isTechCategory = (category: string) => {
+  if (category === "other") return false // "Other" is not tech by default
+  return PROJECT_CATEGORIES.find((cat) => cat.value === category)?.isTech ?? false
+}
 
 const CATEGORY_TEMPLATES: Record<string, { title: string; fields: string[] }> = {
   research: {
@@ -75,6 +66,7 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
   const [showEvidence, setShowEvidence] = useState(false)
   const [tagInput, setTagInput] = useState("")
   const [evidenceLinkInput, setEvidenceLinkInput] = useState("")
+  const [customCategory, setCustomCategory] = useState("")
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -169,6 +161,17 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
       return
     }
 
+    // Validate custom category if "Other" is selected
+    if (formData.category === "other" && !customCategory.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please specify your custom category",
+        variant: "destructive",
+      })
+      setLoading(false)
+      return
+    }
+
     try {
       // Build impact metrics object (only include non-empty values)
       const impactMetrics: any = {}
@@ -187,7 +190,7 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
       const payload: any = {
         title: formData.title,
         description: formData.description,
-        category: formData.category,
+        category: formData.category === "other" ? customCategory.trim() : formData.category,
         skills: [], // TODO: Map technology names to skill IDs
         githubUrl: formData.githubUrl || undefined,
         liveUrl: formData.liveUrl || undefined,
@@ -240,6 +243,7 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
       })
       setTagInput("")
       setEvidenceLinkInput("")
+      setCustomCategory("")
       setShowImpact(false)
       setShowEvidence(false)
       router.refresh()
@@ -254,11 +258,11 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
     }
   }
 
-  const selectedCategoryTemplate = formData.category ? CATEGORY_TEMPLATES[formData.category] : null
+  const selectedCategoryTemplate = formData.category && formData.category !== "other" ? CATEGORY_TEMPLATES[formData.category] : null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[70vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{project ? "Edit Project" : "Add New Project"}</DialogTitle>
           <DialogDescription>
@@ -267,6 +271,7 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-6 py-4">
+
             {/* Required Fields */}
             <div className="grid gap-4">
               <div className="grid gap-2">
@@ -275,7 +280,11 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
                 </Label>
                 <Input
                   id="title"
-                  placeholder="E-commerce Platform"
+                  placeholder={
+                    isTechCategory(formData.category)
+                      ? "E-commerce Platform"
+                      : "Community Event 2024, Research Study on X, Marketing Campaign, etc."
+                  }
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   maxLength={VALIDATION.PROJECT_TITLE_MAX_LENGTH}
@@ -290,7 +299,13 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
                 <Label htmlFor="category">
                   Category <span className="text-destructive">*</span>
                 </Label>
-                <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                <Select value={formData.category} onValueChange={(value) => {
+                  setFormData({ ...formData, category: value })
+                  // Clear custom category if switching away from "Other"
+                  if (value !== "other") {
+                    setCustomCategory("")
+                  }
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
@@ -302,19 +317,30 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
                     ))}
                   </SelectContent>
                 </Select>
+                {formData.category === "other" && (
+                  <div className="grid gap-2 mt-2">
+                    <Label htmlFor="customCategory">
+                      Specify Your Category <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="customCategory"
+                      placeholder="e.g., Agriculture, Fashion, Music, Sports, etc."
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      required
+                      maxLength={50}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {customCategory.length}/50 characters
+                    </p>
+                  </div>
+                )}
               </div>
 
               {selectedCategoryTemplate && (
-                <Card className="bg-muted/50">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">{selectedCategoryTemplate.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-muted-foreground">
-                      Consider including: {selectedCategoryTemplate.fields.join(", ")}
-                    </p>
-                  </CardContent>
-                </Card>
+                <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                  Consider: {selectedCategoryTemplate.fields.join(", ")}
+                </p>
               )}
 
               <div className="grid gap-2">
@@ -323,7 +349,11 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
                 </Label>
                 <Textarea
                   id="description"
-                  placeholder="Describe your project and its key features..."
+                  placeholder={
+                    isTechCategory(formData.category)
+                      ? "Describe your project and its key features..."
+                      : "What was the project about? What problem did it solve? How did you approach it? What were the results?"
+                  }
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={4}
@@ -364,22 +394,13 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
 
             {/* Optional Fields */}
             <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="technologies">Technologies/Skills Used</Label>
-                <Input
-                  id="technologies"
-                  placeholder="React, Node.js, PostgreSQL"
-                  value={formData.technologies}
-                  onChange={(e) => setFormData({ ...formData, technologies: e.target.value })}
-                />
-              </div>
-
+              {/* Role and Organization - Always visible */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="grid gap-2">
                   <Label htmlFor="role">Your Role (optional)</Label>
                   <Input
                     id="role"
-                    placeholder="Lead Developer"
+                    placeholder={isTechCategory(formData.category) ? "Lead Developer" : "Event Coordinator, Researcher, Designer, etc."}
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   />
@@ -388,18 +409,60 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
                   <Label htmlFor="organization">Organization/Client (optional)</Label>
                   <Input
                     id="organization"
-                    placeholder="Company Name"
+                    placeholder="Company, School, or Client Name"
                     value={formData.organization}
                     onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
                   />
                 </div>
               </div>
 
+              {/* Technologies/Skills - Only for tech categories */}
+              {isTechCategory(formData.category) && (
+                <div className="grid gap-2">
+                  <Label htmlFor="technologies">Technologies/Skills Used (optional)</Label>
+                  <Input
+                    id="technologies"
+                    placeholder="React, Node.js, PostgreSQL, Python, etc."
+                    value={formData.technologies}
+                    onChange={(e) => setFormData({ ...formData, technologies: e.target.value })}
+                  />
+                </div>
+              )}
+
+              {/* GitHub and Live URL - Only for tech categories */}
+              {isTechCategory(formData.category) && (
+                <>
+                  <div className="grid gap-2">
+                    <Label htmlFor="githubUrl">GitHub Repository (optional)</Label>
+                    <Input
+                      id="githubUrl"
+                      type="url"
+                      placeholder="https://github.com/username/repo"
+                      value={formData.githubUrl}
+                      onChange={(e) => setFormData({ ...formData, githubUrl: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">Link to your code repository if available</p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="liveUrl">Live Demo URL (optional)</Label>
+                    <Input
+                      id="liveUrl"
+                      type="url"
+                      placeholder="https://yourproject.com"
+                      value={formData.liveUrl}
+                      onChange={(e) => setFormData({ ...formData, liveUrl: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">Link to a live version or demo of your project</p>
+                  </div>
+                </>
+              )}
+
               <div className="grid gap-2">
                 <Label htmlFor="location">Location (optional)</Label>
                 <Input
                   id="location"
-                  placeholder="City, Country"
+                  placeholder="City, Country or Remote"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 />
@@ -422,28 +485,6 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
                     <SelectItem value="PRIVATE">Private</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="githubUrl">GitHub URL (optional)</Label>
-                <Input
-                  id="githubUrl"
-                  type="url"
-                  placeholder="https://github.com/username/repo"
-                  value={formData.githubUrl}
-                  onChange={(e) => setFormData({ ...formData, githubUrl: e.target.value })}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="liveUrl">Live URL (optional)</Label>
-                <Input
-                  id="liveUrl"
-                  type="url"
-                  placeholder="https://example.com"
-                  value={formData.liveUrl}
-                  onChange={(e) => setFormData({ ...formData, liveUrl: e.target.value })}
-                />
               </div>
             </div>
 
@@ -486,7 +527,6 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
                   ))}
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">{formData.tags.length}/15 tags</p>
             </div>
 
             {/* Impact Metrics Section (Collapsible) */}
@@ -498,7 +538,7 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
               >
                 <div className="text-left">
                   <Label className="text-base font-medium">Impact Metrics (optional)</Label>
-                  <p className="text-xs text-muted-foreground">Show the impact of your project</p>
+                  <p className="text-xs text-muted-foreground">Measurable results: audience, revenue, satisfaction</p>
                 </div>
                 {showImpact ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>
@@ -602,8 +642,8 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
                 className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
               >
                 <div className="text-left">
-                  <Label className="text-base font-medium">Evidence Links (optional)</Label>
-                  <p className="text-xs text-muted-foreground">Add links to videos, reports, press, papers</p>
+                  <Label className="text-base font-medium">Evidence & Links (optional)</Label>
+                  <p className="text-xs text-muted-foreground">YouTube, Medium, Behance, Canva, LinkedIn, research papers</p>
                 </div>
                 {showEvidence ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>
@@ -612,7 +652,7 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
                   <div className="flex gap-2">
                     <Input
                       type="url"
-                      placeholder="https://example.com/evidence"
+                      placeholder="https://youtube.com/watch?v=..."
                       value={evidenceLinkInput}
                       onChange={(e) => setEvidenceLinkInput(e.target.value)}
                       onKeyDown={(e) => {
@@ -645,7 +685,6 @@ export function AddProjectDialog({ open, onOpenChange, project }: AddProjectDial
                       ))}
                     </div>
                   )}
-                  <p className="text-xs text-muted-foreground">{formData.evidenceLinks.length}/10 links</p>
                 </div>
               )}
             </div>
