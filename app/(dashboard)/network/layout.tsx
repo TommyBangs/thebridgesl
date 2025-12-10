@@ -5,16 +5,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { PageHeader } from "@/components/shared/page-header"
-import { mockConnections } from "@/lib/mock-data"
 import Link from "next/link"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import { useApi } from "@/lib/hooks/use-api"
+import { LoadingSpinner } from "@/components/shared/loading-spinner"
+import { EmptyState } from "@/components/shared/empty-state"
 
 export default function NetworkPageClient() {
   const [isMessageOpen, setIsMessageOpen] = useState(false)
   const [selectedConnection, setSelectedConnection] = useState<any>(null)
   const [message, setMessage] = useState("")
+  const { data: connectionsData, loading, error } = useApi<{ connections: any[] }>("/network/connections")
 
   const handleMessage = (connection: any) => {
     setSelectedConnection(connection)
@@ -22,10 +25,29 @@ export default function NetworkPageClient() {
   }
 
   const handleSendMessage = () => {
-    // Handle sending message
+    // Handle sending message (will be implemented when messaging system is ready)
     setMessage("")
     setIsMessageOpen(false)
   }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <EmptyState
+        title="Error loading connections"
+        description="Unable to load your network connections. Please try again."
+      />
+    )
+  }
+
+  const connections = connectionsData?.connections || []
 
   return (
     <div className="space-y-8">
@@ -52,39 +74,54 @@ export default function NetworkPageClient() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {mockConnections.map((connection) => (
-          <Card key={connection.id}>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-start gap-4">
-                  <Avatar className="h-12 w-12 flex-shrink-0">
-                    <AvatarImage src={connection.avatar || "/placeholder.svg"} alt={connection.name} />
-                    <AvatarFallback>{connection.name[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold truncate">{connection.name}</h3>
-                    <p className="text-sm text-muted-foreground truncate">{connection.role}</p>
-                    <p className="text-xs text-muted-foreground">{connection.company || connection.university}</p>
+      {connections.length === 0 ? (
+        <EmptyState
+          title="No connections yet"
+          description="Start building your network by finding and connecting with professionals in your field."
+          action={
+            <Link href="/network/find">
+              <Button>
+                <Users className="mr-2 h-4 w-4" />
+                Find Connections
+              </Button>
+            </Link>
+          }
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {connections.map((connection) => (
+            <Card key={connection.id}>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4">
+                    <Avatar className="h-12 w-12 flex-shrink-0">
+                      <AvatarImage src={connection.avatar || "/placeholder.svg"} alt={connection.name} />
+                      <AvatarFallback>{connection.name[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold truncate">{connection.name}</h3>
+                      <p className="text-sm text-muted-foreground truncate">{connection.jobTitle || connection.role}</p>
+                      <p className="text-xs text-muted-foreground truncate">{connection.company || connection.university}</p>
+                    </div>
                   </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Users className="h-3 w-3 flex-shrink-0" />
+                    <span>{connection.mutualConnections} mutual connections</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full bg-transparent"
+                    onClick={() => handleMessage(connection)}
+                  >
+                    Message
+                  </Button>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Users className="h-3 w-3 flex-shrink-0" />
-                  <span>{connection.mutualConnections} mutual connections</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full bg-transparent"
-                  onClick={() => handleMessage(connection)}
-                >
-                  Message
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Dialog open={isMessageOpen} onOpenChange={setIsMessageOpen}>
         <DialogContent>
@@ -100,7 +137,7 @@ export default function NetworkPageClient() {
               </Avatar>
               <div>
                 <p className="font-medium">{selectedConnection?.name}</p>
-                <p className="text-sm text-muted-foreground">{selectedConnection?.role}</p>
+                <p className="text-sm text-muted-foreground">{selectedConnection?.jobTitle || selectedConnection?.role}</p>
               </div>
             </div>
             <Textarea

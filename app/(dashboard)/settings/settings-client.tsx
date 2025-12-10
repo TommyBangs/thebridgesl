@@ -8,21 +8,74 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { PageHeader } from "@/components/shared/page-header"
 import { Separator } from "@/components/ui/separator"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
+import { useApi } from "@/lib/hooks/use-api"
+import { apiPut } from "@/lib/api-client"
+import { LoadingSpinner } from "@/components/shared/loading-spinner"
+import { EmptyState } from "@/components/shared/empty-state"
 
 export default function SettingsPageClient() {
   const [isSaving, setIsSaving] = useState(false)
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [emailNotifications, setEmailNotifications] = useState(true)
+  const [pushNotifications, setPushNotifications] = useState(true)
+  const [profileVisibility, setProfileVisibility] = useState("PUBLIC")
+  
+  const { data: settingsData, loading, error } = useApi<{ settings: any }>("/users/settings")
+
+  // Initialize form with loaded settings
+  useEffect(() => {
+    if (settingsData?.settings) {
+      setName(settingsData.settings.name || "")
+      setEmail(settingsData.settings.email || "")
+      setEmailNotifications(settingsData.settings.emailNotifications ?? true)
+      setPushNotifications(settingsData.settings.pushNotifications ?? true)
+      setProfileVisibility(settingsData.settings.profileVisibility || "PUBLIC")
+    }
+  }, [settingsData])
 
   const handleSaveChanges = async () => {
     setIsSaving(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSaving(false)
-    toast({
-      title: "Settings saved",
-      description: "Your account settings have been updated successfully.",
-    })
+    try {
+      await apiPut("/users/settings", {
+        name,
+        email,
+        emailNotifications,
+        pushNotifications,
+        profileVisibility,
+      })
+      toast({
+        title: "Settings saved",
+        description: "Your account settings have been updated successfully.",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save settings",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <EmptyState
+        title="Error loading settings"
+        description="Unable to load settings. Please try again."
+      />
+    )
   }
 
   const handleDeleteAccount = () => {
@@ -52,7 +105,12 @@ export default function SettingsPageClient() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
-              <Input id="name" placeholder="Your name" defaultValue="Alex Chen" />
+              <Input 
+                id="name" 
+                placeholder="Your name" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -60,17 +118,10 @@ export default function SettingsPageClient() {
                 id="email"
                 type="email"
                 placeholder="your.email@example.com"
-                defaultValue="alex.chen@university.edu"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="bio">Bio</Label>
-            <Input
-              id="bio"
-              placeholder="Tell us about yourself"
-              defaultValue="Computer Science student passionate about AI"
-            />
           </div>
           <Button onClick={handleSaveChanges} disabled={isSaving}>
             {isSaving ? "Saving..." : "Save Changes"}
@@ -93,23 +144,15 @@ export default function SettingsPageClient() {
               <Label>Job Opportunities</Label>
               <p className="text-sm text-muted-foreground">Receive notifications about new job matches</p>
             </div>
-            <Switch defaultChecked />
+            <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
           </div>
           <Separator />
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Skill Recommendations</Label>
-              <p className="text-sm text-muted-foreground">Get notified about trending skills</p>
+              <Label>Push Notifications</Label>
+              <p className="text-sm text-muted-foreground">Receive push notifications</p>
             </div>
-            <Switch defaultChecked />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Network Activity</Label>
-              <p className="text-sm text-muted-foreground">Updates from your connections</p>
-            </div>
-            <Switch />
+            <Switch checked={pushNotifications} onCheckedChange={setPushNotifications} />
           </div>
         </CardContent>
       </Card>
@@ -129,7 +172,7 @@ export default function SettingsPageClient() {
               <Label>Public Profile</Label>
               <p className="text-sm text-muted-foreground">Make your profile visible to everyone</p>
             </div>
-            <Switch defaultChecked />
+            <Switch checked={profileVisibility === "PUBLIC"} onCheckedChange={(checked) => setProfileVisibility(checked ? "PUBLIC" : "PRIVATE")} />
           </div>
           <Separator />
           <div className="flex items-center justify-between">

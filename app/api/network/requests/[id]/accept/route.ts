@@ -1,0 +1,101 @@
+import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, getUserId, AuthError } from "@/lib/middleware"
+import { db } from "@/lib/db"
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await requireAuth(request)
+    const userId = getUserId(session)
+    const { id } = await params
+
+    // Get the connection request
+    const connectionRequest = await db.connectionRequest.findUnique({
+      where: { id },
+      include: {
+        sender: true,
+        receiver: true,
+      },
+    })
+
+    if (!connectionRequest) {
+      return NextResponse.json(
+        { error: "Connection request not found" },
+        { status: 404 }
+      )
+    }
+
+    if (connectionRequest.receiverId !== userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 403 }
+      )
+    }
+
+    if (connectionRequest.status !== "PENDING") {
+      return NextResponse.json(
+        { error: "Connection request already processed" },
+        { status: 400 }
+      )
+    }
+
+    // Update request status
+    await db.connectionRequest.update({
+      where: { id },
+      data: {
+        status: "ACCEPTED",
+        respondedAt: new Date(),
+      },
+    })
+
+    // Calculate mutual connections
+    const userConnections = await db.connection.findMany({
+      where: { userId: userId },
+      select: { connectedUserId: true },
+    })
+    const senderConnections = await db.connection.findMany({
+      where: { userId: connectionRequest.senderId },
+      select: { connectedUserId: true },
+    })
+
+    const userConnectedIds = new Set(userConnections.map((c) => c.connectedUserId))
+    const senderConnectedIds = new Set(senderConnections.map((c) => c.connectedUserId))
+    const mutualCount = Array.from(userConnectedIds).filter((id) => senderConnectedIds.has(id)).length
+
+    // Create bidirectional connections
+    await db.connection.createMany({
+      data: [
+        {
+          userId: userId,
+          connectedUserId: connectionRequest.senderId,
+          type: "PEER",
+          mutualConnections: mutualCount,
+        },
+        {
+          userId: connectionRequest.senderId,
+          connectedUserId: userId,
+          type: "PEER",
+          mutualConnections: mutualCount,
+        },
+      ],
+      skipDuplicates: true,
+    })
+
+    return NextResponse.json({ success: true, message: "Connection request accepted" })
+  } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+    console.error("Accept connection request error:", error)
+    return NextResponse.json(
+      { error: error.message || "Internal server error" },
+      { status: error.status || 500 }
+    )
+  }
+}
+

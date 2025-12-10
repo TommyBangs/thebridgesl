@@ -7,19 +7,83 @@ import { PageHeader } from "@/components/shared/page-header"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Check, X, MessageSquare } from "lucide-react"
-import { MOCK_CONNECTION_REQUESTS } from "@/lib/mock-data"
 import { formatRelativeTime } from "@/lib/format"
+import { useApi } from "@/lib/hooks/use-api"
+import { apiPost } from "@/lib/api-client"
+import { LoadingSpinner } from "@/components/shared/loading-spinner"
+import { EmptyState } from "@/components/shared/empty-state"
+import { toast } from "@/hooks/use-toast"
 
 export default function ConnectionRequestsPage() {
-  const [requests, setRequests] = useState(MOCK_CONNECTION_REQUESTS)
+  const { data: requestsData, loading, error, refetch } = useApi<{ requests: any[] }>("/network/requests")
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set())
 
-  const handleAccept = (requestId: string) => {
-    setRequests(requests.filter((req) => req.id !== requestId))
+  const handleAccept = async (requestId: string) => {
+    setProcessingIds((prev) => new Set(prev).add(requestId))
+    try {
+      await apiPost(`/network/requests/${requestId}/accept`, {})
+      toast({
+        title: "Connection accepted",
+        description: "You are now connected!",
+      })
+      refetch()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to accept connection request",
+        variant: "destructive",
+      })
+    } finally {
+      setProcessingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(requestId)
+        return next
+      })
+    }
   }
 
-  const handleDecline = (requestId: string) => {
-    setRequests(requests.filter((req) => req.id !== requestId))
+  const handleDecline = async (requestId: string) => {
+    setProcessingIds((prev) => new Set(prev).add(requestId))
+    try {
+      await apiPost(`/network/requests/${requestId}/decline`, {})
+      toast({
+        title: "Request declined",
+        description: "Connection request has been declined",
+      })
+      refetch()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to decline connection request",
+        variant: "destructive",
+      })
+    } finally {
+      setProcessingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(requestId)
+        return next
+      })
+    }
   }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <EmptyState
+        title="Error loading requests"
+        description="Unable to load connection requests. Please try again."
+      />
+    )
+  }
+
+  const requests = requestsData?.requests || []
 
   return (
     <main className="flex-1">
@@ -52,7 +116,7 @@ export default function ConnectionRequestsPage() {
                     </div>
 
                     <p className="text-sm text-muted-foreground mb-1">
-                      {request.role} at {request.company}
+                      {request.jobTitle || request.role} {request.company ? `at ${request.company}` : request.university ? `at ${request.university}` : ""}
                     </p>
 
                     {request.mutualConnections > 0 && (
@@ -74,7 +138,12 @@ export default function ConnectionRequestsPage() {
                 </div>
 
                 <div className="flex gap-2 md:flex-col lg:flex-row">
-                  <Button onClick={() => handleAccept(request.id)} size="sm" className="flex-1 md:flex-none">
+                  <Button 
+                    onClick={() => handleAccept(request.id)} 
+                    size="sm" 
+                    className="flex-1 md:flex-none"
+                    disabled={processingIds.has(request.id)}
+                  >
                     <Check className="h-4 w-4 mr-2" />
                     Accept
                   </Button>
@@ -83,6 +152,7 @@ export default function ConnectionRequestsPage() {
                     variant="outline"
                     size="sm"
                     className="flex-1 md:flex-none"
+                    disabled={processingIds.has(request.id)}
                   >
                     <X className="h-4 w-4 mr-2" />
                     Decline

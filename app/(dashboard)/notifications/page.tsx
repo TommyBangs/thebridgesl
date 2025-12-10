@@ -9,37 +9,88 @@ import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PageHeader } from "@/components/shared/page-header"
 import { cn } from "@/lib/utils"
-import { mockNotifications } from "@/lib/mock-data"
+import { useApi } from "@/lib/hooks/use-api"
+import { apiPut } from "@/lib/api-client"
+import { LoadingSpinner } from "@/components/shared/loading-spinner"
+import { EmptyState } from "@/components/shared/empty-state"
+import { toast } from "@/hooks/use-toast"
 
-const iconMap = {
-  briefcase: Briefcase,
-  users: Users,
-  "check-circle": CheckCircle,
-  folder: FolderKanban,
-  award: Award,
-  "trending-up": TrendingUp,
-  clock: Clock,
+const iconMap: Record<string, any> = {
+  OPPORTUNITY: Briefcase,
+  CONNECTION: Users,
+  SKILL: CheckCircle,
+  PROJECT: FolderKanban,
+  CREDENTIAL: Award,
+  TRENDING: TrendingUp,
+  default: Clock,
 }
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(mockNotifications)
   const [filter, setFilter] = useState<"all" | "unread">("all")
+  const endpoint = filter === "unread" ? "/notifications?filter=unread" : "/notifications"
+  const { data: notificationsData, loading, error, refetch } = useApi<{ notifications: any[] }>(endpoint)
 
-  const unreadCount = notifications.filter((n) => !n.read).length
+  const notifications = notificationsData?.notifications || []
+  const unreadCount = notifications.filter((n: any) => !n.read).length
 
-  const handleMarkAsRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await apiPut(`/notifications/${id}/read`, {})
+      toast({
+        title: "Notification marked as read",
+      })
+      refetch()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mark notification as read",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleMarkAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+  const handleMarkAllAsRead = async () => {
+    try {
+      await apiPut("/notifications", { action: "mark-all-read" })
+      toast({
+        title: "All notifications marked as read",
+      })
+      refetch()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mark all notifications as read",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleDelete = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
+    // Delete functionality can be added when API supports it
+    toast({
+      title: "Delete not available",
+      description: "Delete functionality will be available soon",
+    })
   }
 
-  const filteredNotifications = filter === "unread" ? notifications.filter((n) => !n.read) : notifications
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <EmptyState
+        title="Error loading notifications"
+        description="Unable to load notifications. Please try again."
+      />
+    )
+  }
+
+  const filteredNotifications = notifications
 
   return (
     <div className="container mx-auto space-y-6 py-6">
@@ -83,8 +134,8 @@ export default function NotificationsPage() {
             </div>
           </Card>
         ) : (
-          filteredNotifications.map((notification, index) => {
-            const Icon = iconMap[notification.icon as keyof typeof iconMap] || Briefcase
+          filteredNotifications.map((notification: any, index: number) => {
+            const Icon = iconMap[notification.type] || iconMap.default || Clock
             return (
               <Card
                 key={notification.id}
@@ -94,7 +145,7 @@ export default function NotificationsPage() {
                 )}
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <Link href={notification.actionUrl} className="block p-4">
+                <Link href={notification.actionUrl || "#"} className="block p-4">
                   <div className="flex gap-4">
                     <div
                       className={cn(
