@@ -67,10 +67,25 @@ export default function SignUpPage() {
 
       if (signInResult?.error) {
         router.push("/auth/signin")
-      } else {
-        router.push("/")
-        router.refresh()
+        return
       }
+
+      // Check onboarding status to decide where to send the user
+      try {
+        const res = await fetch("/api/users/onboarding", { cache: "no-store" })
+        if (res.ok) {
+          const data = await res.json()
+          if (!data.completed) {
+            router.push("/onboarding")
+            return
+          }
+        }
+      } catch (err) {
+        // If the status check fails, fall through to the default redirect
+      }
+
+      router.push("/")
+      router.refresh()
     } catch (error: any) {
       toast({
         title: "Error",

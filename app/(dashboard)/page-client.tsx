@@ -16,6 +16,7 @@ import { useApi } from "@/lib/hooks/use-api"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import { EmptyState } from "@/components/shared/empty-state"
 import type { Skill, Opportunity } from "@/types"
+import Link from "next/link"
 
 export default function HomePageClient() {
   const [addProjectOpen, setAddProjectOpen] = useState(false)
@@ -28,6 +29,24 @@ export default function HomePageClient() {
   const user = profileData?.user
   const trendingSkills = skillsData?.skills || []
   const opportunities = opportunitiesData?.opportunities || []
+
+  const profileCompletion = (() => {
+    if (!user) return { percent: 0, checklist: [] as { label: string; done: boolean }[] }
+    const checklist = [
+      { label: "Add a profile photo", done: !!user.avatar },
+      { label: "Write a bio", done: !!user.learnerProfile?.bio },
+      { label: "Set your location", done: !!user.learnerProfile?.location },
+      {
+        label: "Add education or current role",
+        done: !!user.learnerProfile?.university || !!user.learnerProfile?.currentJobTitle,
+      },
+      { label: "Add a project", done: (user.projects?.length || 0) > 0 },
+      { label: "Add at least one skill", done: (user.userSkills?.length || 0) > 0 },
+    ]
+    const doneCount = checklist.filter((c) => c.done).length
+    const percent = Math.round((doneCount / checklist.length) * 100)
+    return { percent, checklist }
+  })()
 
   if (profileLoading || skillsLoading || opportunitiesLoading) {
     return (
@@ -65,6 +84,40 @@ export default function HomePageClient() {
           />
           <QuickActionCard icon="award" title="Credentials" description="View your certificates" href="/profile" />
         </div>
+      </section>
+
+      <section>
+        <Card className="border-muted">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Profile completeness</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">Complete your profile to improve matches</div>
+              <span className="text-sm font-semibold">{profileCompletion.percent}%</span>
+            </div>
+            <Progress value={profileCompletion.percent} />
+            <div className="space-y-2">
+              {profileCompletion.checklist.map((item) => (
+                <div key={item.label} className="flex items-center gap-2 text-sm">
+                  <span
+                    className={`h-2 w-2 rounded-full ${item.done ? "bg-green-500" : "bg-muted-foreground/40"}`}
+                    aria-hidden
+                  />
+                  <span className={item.done ? "line-through text-muted-foreground" : ""}>{item.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button asChild variant="outline" size="sm">
+                <Link href="/profile">Edit profile</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/onboarding">Onboarding</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       <section>

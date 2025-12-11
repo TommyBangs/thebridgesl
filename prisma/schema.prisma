@@ -17,6 +17,7 @@ model User {
   passwordHash  String    @map("password_hash")
   avatar        String?
   role          UserRole  @default(STUDENT)
+  onboarded     Boolean   @default(false) @map("onboarded")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -38,6 +39,7 @@ model User {
   verificationRequests VerificationRequest[] @relation("VerificationRequests")
   projectCollaborators ProjectCollaborator[]
   endorsements        Endorsement[] @relation("UserEndorsements")
+  passwordResetTokens PasswordResetToken[]
 
   @@map("users")
 }
@@ -449,6 +451,19 @@ enum NotificationType {
   PROJECT
   CREDENTIAL
   TRENDING
+}
+
+model PasswordResetToken {
+  id         String   @id @default(uuid())
+  token      String   @unique
+  userId     String   @map("user_id")
+  expiresAt  DateTime @map("expires_at")
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
 }
 
 model CareerPath {

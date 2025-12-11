@@ -42,6 +42,21 @@ export default function SignInPage() {
           title: "Success",
           description: "Signed in successfully",
         })
+
+        // After signing in, check onboarding status to route appropriately
+        try {
+          const res = await fetch("/api/users/onboarding", { cache: "no-store" })
+          if (res.ok) {
+            const data = await res.json()
+            if (!data.completed) {
+              router.push("/onboarding")
+              return
+            }
+          }
+        } catch (err) {
+          // If check fails, fall through to default home redirect
+        }
+
         router.push("/")
         router.refresh()
       }
@@ -101,6 +116,11 @@ export default function SignInPage() {
               Don't have an account?{" "}
               <Link href="/auth/signup" className="text-primary hover:underline">
                 Sign up
+              </Link>
+            </p>
+            <p className="text-sm text-center text-muted-foreground">
+              <Link href="/auth/forgot-password" className="text-primary hover:underline">
+                Forgot your password?
               </Link>
             </p>
           </CardFooter>
