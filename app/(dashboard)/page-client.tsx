@@ -16,7 +16,6 @@ import { useApi } from "@/lib/hooks/use-api"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import { EmptyState } from "@/components/shared/empty-state"
 import type { Skill, Opportunity } from "@/types"
-import Link from "next/link"
 
 export default function HomePageClient() {
   const [addProjectOpen, setAddProjectOpen] = useState(false)
