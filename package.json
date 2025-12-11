@@ -12,7 +12,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "install": "pnpm install --no-frozen-lockfile"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -88,4 +89,7 @@
   "engines": {
     "node": ">=18.0.0"
   }
+
+  
 }
+
