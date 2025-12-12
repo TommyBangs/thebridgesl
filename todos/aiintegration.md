@@ -33,9 +33,9 @@
 
 ### Step 1.1: Dependencies & Environment
 1.  **Install Packages:**
-    *   Run `npm install openai pgvector`
-    *   Run `npm install --save-dev @types/pgvector`
-    *   For resume parsing: `npm install pdf-parse` (server-side) or use client-side library.
+    *   Run `npm install openai pdf-parse@^1.1.1`
+    *   **Note:** Using `pdf-parse@^1.1.1` for Node 20.14.0 compatibility. If you have Node >=20.16.0, use latest `pdf-parse`.
+    *   **Note:** `@types/pgvector` is not needed - Prisma handles vector types via `Unsupported`.
 2.  **Environment Variables:**
     *   Add `OPENAI_API_KEY=sk-...` to `.env` (required).
     *   Add `OPENAI_EMBEDDING_MODEL=text-embedding-3-small` (default).

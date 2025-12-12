@@ -125,9 +125,13 @@
 ### 1. Install Dependencies (2 minutes)
 
 ```bash
-npm install openai pdf-parse
-npm install --save-dev @types/pgvector
+npm install openai pdf-parse@^1.1.1
 ```
+
+**Note:** 
+- Using `pdf-parse@^1.1.1` (older version) for compatibility with Node 20.14.0
+- If you upgrade to Node >=20.16.0, you can use the latest `pdf-parse` version
+- `@types/pgvector` is not needed (Prisma handles vector types via `Unsupported`)
 
 ### 2. Set Up Environment Variables (5 minutes)
 
