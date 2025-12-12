@@ -1,76 +1,113 @@
-## Blockchain Verification & QR — Implementation Plan
+# Blockchain Verification — Explicit Implementation Guide
 
-Audience: engineers implementing verifiable credentials (hash anchoring + QR) in this codebase.
+**Audience:** Developers implementing verifiable credentials.
+**Goal:** Anchor credentials on Solana for tamper-proof verification and provide a trusted verification UI.
 
-### Goals
-- Give each credential a tamper-evident proof (hash anchored on-chain) and scannable verification (QR/link).
-- Keep it cheap, deterministic, and easy to reason about (testnet first, mainnet optional later).
+---
 
-### Current State (what exists)
-- `app/api/credentials/[id]/verify/route.ts` returns credential + `blockchainHash` if present.
-- `app/api/credentials/[id]/qr/route.ts` generates a QR for `/verify/[id]`.
-- UI: `/verify` page and credential detail show QR placeholders and `blockchainHash` when set.
-- Prisma: `credential.blockchainHash` exists; no tx/chain metadata; no anchoring logic.
+## 📋 MVP Feature Checklist
+1.  **Anchoring:** Hash credential data and store it on Solana.
+2.  **Verification:** Scan QR -> Check on-chain hash -> Confirm validity.
+3.  **Revocation:** Issuer can revoke a credential (mandatory).
+4.  **Issuer Identity:** Show *who* issued the credential (not just a wallet address).
 
-### Target Features (what to build)
-1) Anchor credential hash on-chain when issued/verified; persist tx metadata.
-2) Verify endpoint that checks the stored hash against the on-chain record and responds with status.
-3) UI surfacing: QR that links to verification page; show chain, tx link, and verification result.
-4) Admin/issuer flow to (re)anchor or revoke (soft delete / status flip).
+---
 
-### Data Model Changes (Prisma)
-- In `prisma/schema.prisma` add to `Credential`:
-  - `blockchainHash String?`
-  - `blockchainTxId String?`
-  - `blockchainChain String?` // e.g., "polygon-mumbai", "sepolia"
-  - `blockchainStatus String?` // "anchored", "failed", "pending", "revoked"
-- Run `npx prisma generate` + `npx prisma db push`.
+## 🛠️ Phase 1: Setup & Data Model
 
-### Hash Payload (deterministic)
-- Use stable, sorted JSON fields to hash with SHA-256:
-  - `id`, `userId`, `issuer`, `title`, `type`, `issueDate`, `expiryDate`, `skills` (sorted), `createdAt`, `updatedAt`.
-- Build helper `lib/credential-hash.ts`:
-  - `buildCredentialPayload(credential)` -> canonical object with sorted arrays.
-  - `hashCredential(payload)` -> `sha256` hex string.
+### Step 1.1: Dependencies & Environment
+1.  **Install Packages:**
+    *   Run `npm install @solana/web3.js bs58`
+2.  **Environment Variables:**
+    *   `SOLANA_RPC_URL`: Use `https://api.devnet.solana.com` for dev/staging.
+    *   `SOLANA_PRIVATE_KEY`: Base58 encoded private key of the issuer wallet.
+    *   `SOLANA_CLUSTER`: `devnet` or `mainnet-beta`.
+3.  **Wallet Funding:**
+    *   Ensure the issuer wallet has SOL.
+    *   *Action:* Create a script or cron job to check balance and alert if < 0.1 SOL.
 
-### Anchor Flow (write path)
-- Add service `lib/blockchain/anchor.ts`:
-  - `anchorHashOnChain(hash, { chain })` returns `{ txId, explorerUrl }`.
-  - For MVP, use a thin wrapper that calls a simple anchoring contract (or fallback to a timestamping API if no chain access).
-  - Use env: `BLOCKCHAIN_RPC_URL`, `BLOCKCHAIN_PRIVATE_KEY`, `BLOCKCHAIN_CHAIN`.
-- Extend credential create/update (where credential issuance happens) to:
-  - Compute hash via helper.
-  - Call `anchorHashOnChain`.
-  - Store `blockchainHash`, `blockchainTxId`, `blockchainChain`, `blockchainStatus="anchored" | "pending" | "failed"`.
-  - If anchoring fails, return 200 with `blockchainStatus="failed"` but do not block issuance; log error.
+### Step 1.2: Database Schema
+1.  **Update `Credential` Model in `prisma/schema.prisma`:**
+    *   Add `blockchainHash` (String?): The SHA-256 hash of the credential.
+    *   Add `blockchainTxId` (String?): The Solana transaction signature.
+    *   Add `blockchainStatus` (String?): Values: `pending`, `anchored`, `failed`, `revoked`.
+    *   Add `blockchainChain` (String?): e.g., `solana-devnet`.
+2.  **Apply Changes:**
+    *   Run `npx prisma generate` and `npx prisma db push`.
 
-### Verify Flow (read path)
-- Add `app/api/credentials/[id]/blockchain/route.ts`:
-  - Fetch credential, ensure it has `blockchainHash`.
-  - Query chain (or anchoring service) to retrieve anchored hash for `txId`.
-  - Compare stored `blockchainHash` to on-chain hash; return `{ verified: boolean, reason, txId, chain, explorerUrl }`.
-- Update `app/api/credentials/[id]/verify/route.ts` to also call the above internally (or return a link) so the UI can show live status.
+---
 
-### QR & Verification Page
-- `/verify` page: show QR (already generated) plus:
-  - Chain, tx link, last verified timestamp, status badge.
-  - If verification fails: show reason and retry button (hits `/blockchain` endpoint).
-- Credential detail sidebar: render tx link and status using new fields.
+## 🔐 Phase 2: Hashing & Anchoring
 
-### Revocation / Re-anchor (optional but recommended)
-- Add `POST /api/credentials/[id]/reanchor` to recompute hash and re-anchor (e.g., after edits).
-- Add `POST /api/credentials/[id]/revoke` to mark `blockchainStatus="revoked"` and optionally anchor a revocation marker (hash of `id` + "revoked").
+### Step 2.1: Deterministic Hashing
+1.  **Create `lib/blockchain/hash.ts`:**
+    *   **Goal:** Create a consistent hash regardless of field order.
+    *   **Logic:**
+        *   Extract specific fields: `id`, `issuer`, `issueDate`, `expiryDate`, `skills` (sort this array!), `userId`.
+        *   Create a canonical JSON string (keys sorted alphabetically).
+        *   Hash using SHA-256.
+        *   Return the hex string.
 
-### Testing Plan
-- Unit: hash helper determinism; anchor service mocks; verify comparison logic.
-- Integration: create credential -> hash stored -> anchor called (mocked) -> verify returns `verified=true`.
-- E2E (staging): issue a credential, anchor on testnet, scan QR, and confirm explorer link and verification match.
+### Step 2.2: Anchoring Service (Solana)
+1.  **Create `lib/blockchain/solana.ts`:**
+    *   **Function `anchorHash(hash: string)`:**
+        *   Connect to Solana RPC.
+        *   Create a transaction.
+        *   **Method:** Use the `Memo Program` to attach the hash as a string to a simple 0-value transfer (or micro-lamport transfer) to self. This is the cheapest and standard way to log data.
+        *   Sign and send.
+        *   Return the `signature` (transaction ID).
 
-### Rollout Steps
-1) Add schema fields + generate/push.
-2) Implement hash helpers + anchor service (with envs).
-3) Wire credential issuance/update to anchor + persist metadata.
-4) Add `/blockchain` verify endpoint and surface in `/verify` and credential detail.
-5) Staging test with testnet; capture tx link; document envs.
-6) Optional: add re-anchor/revoke endpoints and UI buttons for admins.
+### Step 2.3: Integrate with Issuance Flow
+1.  **Update Credential Creation API:**
+    *   When a credential is created/approved:
+        1.  Calculate Hash.
+        2.  Call `anchorHash`.
+        3.  Update DB with `blockchainHash`, `blockchainTxId`, and `status='anchored'`.
+    *   *Error Handling:* If blockchain fails, save the credential anyway but mark status `failed`. Add a "Retry" button in Admin UI.
+
+---
+
+## ✅ Phase 3: Verification & Trust
+
+### Step 3.1: Verification Logic
+1.  **Create `app/api/credentials/[id]/blockchain/route.ts`:**
+    *   **Inputs:** Credential ID.
+    *   **Steps:**
+        1.  Fetch Credential from DB.
+        2.  Fetch Transaction from Solana using `blockchainTxId`.
+        3.  Extract the Memo string from the transaction.
+        4.  **Compare:** Does DB Hash == On-Chain Hash?
+        5.  **Revocation Check:** Is `blockchainStatus` == `revoked`?
+        6.  **Issuer Check:** Does the transaction signer match a known Issuer Wallet?
+    *   **Return:** `{ verified: boolean, issuer: { name, logo }, chainData: ... }`
+
+### Step 3.2: Issuer Registry (MVP)
+1.  **Simple Implementation:**
+    *   Create a constant file `lib/blockchain/issuers.ts`.
+    *   Export a map: `Record<WalletAddress, { name: string, logo: string }>`.
+    *   *Why:* This prevents anyone from just anchoring a fake hash from their own wallet. The UI will only show "Verified by University X" if the wallet matches.
+
+### Step 3.3: Revocation
+1.  **Revoke Endpoint:**
+    *   Admin clicks "Revoke".
+    *   Update DB `blockchainStatus` = `revoked`.
+    *   (Optional for MVP, but good): Anchor a new transaction with "REVOKED:<hash>".
+    *   The Verification endpoint must check the DB status first.
+
+---
+
+## 📱 Phase 4: UI Integration
+
+### Step 4.1: Public Verification Page
+1.  **Page `/verify/[id]`:**
+    *   Call the verification endpoint on load.
+    *   **States:**
+        *   ✅ **Verified:** Green badge, "Issued by [Institution Name]", link to Solana Explorer.
+        *   ❌ **Invalid:** Hash mismatch or revoked. Show warning.
+        *   ⏳ **Pending:** Not yet anchored.
+
+### Step 4.2: QR Code
+1.  **Generate QR:**
+    *   The QR code should point to `https://platform.com/verify/[credential_id]`.
+    *   This ensures the verifier lands on *your* trusted domain to see the verification status.
 

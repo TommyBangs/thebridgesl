@@ -1,78 +1,123 @@
-## AI Integration — Implementation Playbook
+# AI Integration — Explicit Implementation Guide
 
-Audience: engineers adding practical AI to the Bridge Platform (search, recommendations, assistive content).
+**Audience:** Developers implementing AI features.
+**Goal:** Add Resume Parsing, Semantic Search, and Match Explanations to the Bridge Platform.
 
-### Goals
-- Move from mock/static heuristics to data-driven and semantic AI.
-- Start with deterministic scoring; add embeddings; layer LLM assists with guardrails.
+---
 
-### Current State (from code)
-- Opportunities API: rule-based match score from skill overlap.
-- Network suggestions: rule-based skill/mutual-connection scoring.
-- Career page: hardcoded recommendations.
-- Search: DB text search only (no embeddings).
-- No LLM/embedding services configured.
+## 📋 MVP Feature Checklist
+1.  **Resume Parsing:** Upload PDF -> Auto-fill profile (High Impact).
+2.  **Semantic Search:** Find "React dev" when searching "Frontend engineer".
+3.  **Match Explanations:** "Why this job?" (Trust).
+4.  **Skill Verification:** AI-generated quizzes.
 
-### Target Features (phased)
-1) Data-driven recommendations (no LLM): improve scores using real user/profile data.
-2) Semantic search: embeddings for users, skills, opportunities, projects.
-3) AI assists: constrained LLM helpers for copy/skills suggestions with user confirmation.
+---
 
-### Phase 1: Deterministic Upgrades (fast, low risk)
-- Opportunities matching:
-  - Add weights for proficiency, recency, location/remote preference, and required vs. nice-to-have skills.
-  - Return component scores for transparency.
-- Career recommendations:
-  - Replace hardcoded list with DB-backed recommendations using demand, openings, salary, and user skill fit.
-  - Expose via `/api/career/recommendations`.
-- Search ranking:
-  - Add simple rank expression (e.g., `ts_rank` if using Postgres full-text) or weighted sorting by recency + match count.
+## 🛠️ Phase 1: Infrastructure & Setup
 
-### Phase 2: Semantic Search (embeddings)
-- Storage:
-  - Add embeddings column per entity (users, skills, opportunities, projects) in Prisma (e.g., `embedding Vector?` if pgvector, or `Float[]`).
-  - Add migration to enable pgvector in Postgres (extension) if available.
-- Generation:
-  - Create `lib/embeddings.ts` using an embedding provider (OpenAI `text-embedding-3-small` or local model). Env: `EMBEDDING_PROVIDER`, `EMBEDDING_API_KEY`.
-  - On create/update of entities, enqueue embedding generation (sync for now; job queue later).
-- API:
-  - Add `/api/search/semantic` with query embedding + ANN search (vector cosine). Fallback to text search if no embedding.
-  - Blend results: semantic score + recency + popularity.
-- UI:
-  - Wire Discover and Network Find to call semantic search when enabled (feature flag `SEMANTIC_SEARCH_ENABLED`).
+### Step 1.1: Dependencies & Environment
+1.  **Install Packages:**
+    *   Run `npm install openai pgvector`
+    *   Run `npm install --save-dev @types/pgvector`
+2.  **Environment Variables:**
+    *   Add `OPENAI_API_KEY=sk-...` to `.env`.
+    *   Add `OPENAI_EMBEDDING_MODEL=text-embedding-3-small`.
+    *   Add `OPENAI_LLM_MODEL=gpt-4o-mini`.
+    *   Add `SEMANTIC_SEARCH_ENABLED=true`.
 
-### Phase 3: AI Assists (LLM with guardrails)
-- Use cases:
-  - Project description improver and skill/tag suggester.
-  - Career guidance “next three actions” given user skills/goals.
-- Implementation:
-  - Add `/api/ai/project-suggest` and `/api/ai/skills-suggest` that take structured input, call LLM with strict system prompts, and return short, bounded outputs.
-  - Enforce max tokens, JSON schema validation, profanity/PII filters; never auto-save—require user confirm.
-- UI:
-  - In project form, add “Improve description” button; show diff; allow accept/cancel.
-  - In career page, add “Suggest next steps” call-to-action.
+### Step 1.2: Database Configuration
+1.  **Enable pgvector:**
+    *   Connect to your Postgres database and run: `CREATE EXTENSION IF NOT EXISTS vector;`
+2.  **Update Prisma Schema (`prisma/schema.prisma`):**
+    *   Add `previewFeatures = ["postgresqlExtensions"]` to the `client` generator.
+    *   Add `extensions = [vector]` to the `datasource` block.
+    *   Add an `embedding` field to `Skill`, `Opportunity`, `Project`, and `User` models.
+        *   Type: `Unsupported("vector(1536)")?` (for `text-embedding-3-small`).
+3.  **Apply Changes:**
+    *   Run `npx prisma generate` and `npx prisma db push`.
 
-### Guardrails & Safety
-- Keep prompts minimal; set temperature low (≤0.3) for deterministic outputs.
-- Validate all model outputs against schema; clamp lengths; strip URLs/emails if not expected.
-- Log model inputs/outputs (without secrets) for audit; allow opt-out via settings once settings API exists.
+### Step 1.3: OpenAI Client Wrapper
+1.  **Create `lib/openai.ts`:**
+    *   Initialize the OpenAI client using the API key.
+    *   Export the client instance and model constants.
+    *   *Tip: Fail fast if the API key is missing in development.*
 
-### Infra / Env
-- Required envs (examples):
-  - `EMBEDDING_PROVIDER`, `EMBEDDING_API_KEY`
-  - `OPENAI_API_KEY` (if using OpenAI for LLM/embeddings)
-  - `SEMANTIC_SEARCH_ENABLED=true` (feature flag)
-- DB: enable pgvector extension; add migrations for embedding columns.
+---
 
-### Testing Plan
-- Unit: scoring functions (opportunity match, career ranking); embedding helper; prompt builders.
-- Integration: semantic search endpoint returns blended results; AI assist endpoints validate output shape.
-- UI: confirm/decline flows for AI suggestions; graceful fallback when embeddings missing.
+## 📄 Phase 2: Resume Parsing (MVP Priority)
 
-### Rollout Steps
-1) Add pgvector + embedding columns; build `lib/embeddings.ts`.
-2) Implement `/api/search/semantic`; add feature flag; wire Discover/Network Find to call it.
-3) Improve deterministic scoring for opportunities + career recommendations; expose new endpoints.
-4) Add AI assist endpoints and wire project form + career page with confirm-before-save UI.
-5) Staging test: generate embeddings, run semantic search, exercise AI assists; add telemetry for usage/errors.
+### Step 2.1: Parsing Logic
+1.  **Create Service `lib/ai/resume-parser.ts`:**
+    *   Function `parseResume(text: string)`:
+        *   Call `openai.chat.completions.create`.
+        *   **System Prompt:** "You are a resume parser. Extract name, bio, skills (list), experience (list), and education. Return JSON only."
+        *   **Response Format:** Enforce `{ type: "json_object" }`.
+2.  **PDF Text Extraction:**
+    *   Use a library like `pdf-parse` (if running on server) or a client-side extractor to get raw text from the uploaded file.
+
+### Step 2.2: API Endpoint
+1.  **Create `app/api/ai/parse-resume/route.ts`:**
+    *   Accept `POST` with file or text.
+    *   Call your parsing service.
+    *   Validate the returned JSON structure.
+    *   Return the structured data to the frontend.
+
+### Step 2.3: UI Integration
+1.  **Onboarding Flow:**
+    *   Add an "Upload Resume" step before the manual profile form.
+    *   On success, pre-fill the form fields (Bio, Skills, Experience) with the parsed data.
+    *   *Crucial:* Allow the user to edit the data before saving. Never auto-save AI output.
+
+---
+
+## 🔍 Phase 3: Semantic Search
+
+### Step 3.1: Embedding Generation Service
+1.  **Create `lib/ai/embeddings.ts`:**
+    *   Function `generateEmbedding(text: string)`:
+        *   Call `openai.embeddings.create` with `text-embedding-3-small`.
+        *   Return the vector (`number[]`).
+    *   Function `updateEntityEmbedding(id, type, data)`:
+        *   Construct a single text string from relevant fields (e.g., for Opportunity: title + description + skills).
+        *   Generate embedding.
+        *   Update the database row using `db.$executeRaw` (since Prisma doesn't support vector writes natively yet).
+
+### Step 3.2: Search Logic
+1.  **Create `lib/ai/search.ts`:**
+    *   Function `semanticSearch(query, type)`:
+        *   Generate embedding for the `query`.
+        *   Perform a cosine similarity search using raw SQL:
+            *   `SELECT *, 1 - (embedding <=> $1) as similarity FROM ... ORDER BY similarity DESC`
+2.  **Update `app/api/search/route.ts`:**
+    *   Check if `SEMANTIC_SEARCH_ENABLED` is true.
+    *   If yes, use `semanticSearch`.
+    *   If no, fall back to existing Postgres text search.
+
+---
+
+## 🤝 Phase 4: Match Explanations & Verification
+
+### Step 4.1: Match Explanations
+1.  **Logic:**
+    *   When fetching Opportunities for a user, identify the top match.
+    *   Call LLM (`gpt-4o-mini`) with the User's Profile and the Job Description.
+    *   **Prompt:** "Explain in one sentence why this job is a good match for this user. Focus on skills and location."
+2.  **UI:**
+    *   Display this "AI Insight" on the Opportunity card or details page.
+
+### Step 4.2: Skill Verification Quizzes
+1.  **Quiz Generator (`app/api/ai/quiz/route.ts`):**
+    *   Input: `skillName` (e.g., "React").
+    *   LLM Prompt: "Generate 3 multiple-choice questions to test beginner knowledge of React. Return JSON."
+2.  **Verification Flow:**
+    *   User clicks "Verify" on a skill.
+    *   Show modal with generated questions.
+    *   If user passes (e.g., 3/3 correct), update `UserSkill` record to `verified = true`.
+
+---
+
+## 🛡️ Guardrails & Safety
+*   **Temperature:** Set to `0.0` - `0.3` for all tasks to ensure consistency.
+*   **Validation:** Always validate LLM JSON output against a Zod schema before using it.
+*   **User Control:** AI suggestions are *drafts*. User must always confirm/edit.
 
