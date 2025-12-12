@@ -52,8 +52,11 @@ export async function verifyCredentialOnChain(
         }
     }
 
+    // Type assertion for blockchain fields until Prisma is regenerated
+    const cred = credential as any
+
     // Check if credential has blockchain data
-    if (!credential.blockchainHash || !credential.blockchainTxId) {
+    if (!credential.blockchainHash || !cred.blockchainTxId) {
         return {
             verified: false,
             reason: "not_anchored",
@@ -62,7 +65,7 @@ export async function verifyCredentialOnChain(
     }
 
     // Check revocation status (fastest check)
-    if (credential.blockchainStatus === "revoked") {
+    if (cred.blockchainStatus === "revoked") {
         return {
             verified: false,
             reason: "revoked",
@@ -72,7 +75,7 @@ export async function verifyCredentialOnChain(
 
     try {
         // Fetch transaction from Solana
-        const transaction = await getTransaction(credential.blockchainTxId)
+        const transaction = await getTransaction(cred.blockchainTxId)
 
         if (!transaction) {
             return {
@@ -103,11 +106,11 @@ export async function verifyCredentialOnChain(
         }
 
         // Verify issuer (check transaction signer)
-        const signers = transaction.transaction.message.accountKeys
-            .filter((key: any) => key.signer)
-            .map((key: any) => key.pubkey.toString())
-
-        const issuerWallet = signers[0] // First signer is the payer
+        // Handle both legacy and versioned transactions
+        const accountKeys = transaction.transaction.message.getAccountKeys()
+        const staticKeys = accountKeys.staticAccountKeys
+        const signerKeys = staticKeys.slice(0, transaction.transaction.message.header.numRequiredSignatures)
+        const issuerWallet = signerKeys[0]?.toString() || staticKeys[0]?.toString()
         const issuer = getIssuerByWallet(issuerWallet)
 
         if (!issuer) {
@@ -121,7 +124,7 @@ export async function verifyCredentialOnChain(
         // Build explorer URL
         const config = await import("./config").then((m) => m.getSolanaConfig())
         const cluster = config.cluster === "mainnet-beta" ? "" : `?cluster=${config.cluster}`
-        const explorerUrl = `https://explorer.solana.com/tx/${credential.blockchainTxId}${cluster}`
+        const explorerUrl = `https://explorer.solana.com/tx/${cred.blockchainTxId}${cluster}`
 
         return {
             verified: true,
@@ -131,7 +134,7 @@ export async function verifyCredentialOnChain(
                 website: issuer.website,
             },
             chainData: {
-                txId: credential.blockchainTxId,
+                txId: cred.blockchainTxId,
                 explorerUrl,
                 chain: `solana-${config.cluster}`,
             },
@@ -144,7 +147,7 @@ export async function verifyCredentialOnChain(
         if (error.message?.includes("network") || error.message?.includes("timeout")) {
             try {
                 await new Promise((resolve) => setTimeout(resolve, 1000))
-                const transaction = await getTransaction(credential.blockchainTxId)
+                const transaction = await getTransaction(cred.blockchainTxId)
                 if (transaction) {
                     // Retry verification logic here if needed
                 }

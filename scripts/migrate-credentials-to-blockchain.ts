@@ -48,9 +48,11 @@ async function anchorCredential(credential: any, options: Options): Promise<bool
             where: { id: credential.id },
             data: {
                 blockchainHash: hash,
-                blockchainTxId: signature,
-                blockchainStatus: "anchored",
-                blockchainChain: `solana-${config.cluster}`,
+                ...({
+                    blockchainTxId: signature,
+                    blockchainStatus: "anchored",
+                    blockchainChain: `solana-${config.cluster}`,
+                } as any),
             },
         })
 
@@ -65,7 +67,7 @@ async function anchorCredential(credential: any, options: Options): Promise<bool
                 await prisma.credential.update({
                     where: { id: credential.id },
                     data: {
-                        blockchainStatus: "failed",
+                        ...({ blockchainStatus: "failed" } as any),
                     },
                 })
             } catch (updateError) {

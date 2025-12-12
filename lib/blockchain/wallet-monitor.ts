@@ -33,7 +33,8 @@ export async function checkWalletBalance(): Promise<number> {
         const config = getSolanaConfig()
 
         // Decode private key to get public key
-        const bs58 = await import("bs58")
+        const bs58Module = await import("bs58")
+        const bs58 = bs58Module.default || bs58Module
         const secretKey = bs58.decode(config.privateKey)
         const { Keypair } = await import("@solana/web3.js")
         const keypair = Keypair.fromSecretKey(secretKey)
