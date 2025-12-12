@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { SkillBadge } from "@/components/shared/skill-badge"
 import { ApplyJobDialog } from "@/components/dialogs/apply-job-dialog"
+import { MatchExplanation } from "@/components/ai/match-explanation"
 import { formatCurrency, formatRelativeTime } from "@/lib/format"
 import type { Opportunity } from "@/types"
 
@@ -108,6 +109,11 @@ export function JobDetailClient({ job }: JobDetailClientProps) {
                 </div>
               </CardContent>
             </Card>
+
+            {/* AI Match Explanation */}
+            {job.matchScore && job.matchScore > 0 && (
+              <MatchExplanation opportunityId={job.id} />
+            )}
           </div>
 
           {/* Sidebar */}

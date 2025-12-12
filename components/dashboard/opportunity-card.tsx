@@ -12,6 +12,7 @@ import { MapPin, Briefcase, Clock } from "lucide-react"
 import { formatRelativeTime, formatCurrency } from "@/lib/format"
 import { SkillBadge } from "@/components/shared/skill-badge"
 import { ApplyJobDialog } from "@/components/dialogs/apply-job-dialog"
+import { MatchExplanation } from "@/components/ai/match-explanation"
 import type { Opportunity } from "@/types"
 
 interface OpportunityCardProps {
@@ -87,6 +88,11 @@ export function OpportunityCard({ opportunity, onApply }: OpportunityCardProps) 
                   </Badge>
                 )}
               </div>
+
+              {/* AI Match Explanation */}
+              {matchScore && matchScore > 0 && (
+                <MatchExplanation opportunityId={opportunity.id} variant="inline" />
+              )}
             </div>
           </div>
         </CardContent>

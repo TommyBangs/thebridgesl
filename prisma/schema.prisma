@@ -3,11 +3,13 @@
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 model User {
@@ -38,6 +40,8 @@ model User {
   verificationRequests VerificationRequest[] @relation("VerificationRequests")
   projectCollaborators ProjectCollaborator[]
   endorsements        Endorsement[] @relation("UserEndorsements")
+
+  embedding           Unsupported("vector(1536)")?
 
   @@map("users")
 }
@@ -93,6 +97,8 @@ model Skill {
   courseSkills        CourseSkill[]
   trendingData        TrendingSkill?
   skillGaps           SkillGap[]
+
+  embedding           Unsupported("vector(1536)")?
 
   @@map("skills")
 }
@@ -200,6 +206,8 @@ model Project {
   collaborators     ProjectCollaborator[]
   endorsements      Endorsement[] @relation("ProjectEndorsements")
 
+  embedding         Unsupported("vector(1536)")?
+
   @@map("projects")
 }
 
@@ -291,6 +299,8 @@ model Opportunity {
   requirements OpportunityRequirement[]
   opportunitySkills OpportunitySkill[]
   applications Application[]
+
+  embedding     Unsupported("vector(1536)")?
 
   @@map("opportunities")
 }
