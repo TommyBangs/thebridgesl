@@ -52,19 +52,37 @@ export default function SignInPage() {
       })
 
       if (result?.error) {
-        // Handle specific error messages
+        // Map known server error codes/messages to user-friendly toasts
+        const code = result.error
         let errorTitle = "Login Failed"
-        let errorDescription = result.error
+        let errorDescription = "Unable to sign in. Please try again."
 
-        if (result.error.includes("Account not found") || result.error.includes("not registered")) {
-          errorTitle = "Account Not Found"
-          errorDescription = "No account found with this email address. Please sign up first."
-        } else if (result.error.includes("Invalid password") || result.error.includes("incorrect password")) {
-          errorTitle = "Incorrect Password"
-          errorDescription = "The password you entered is incorrect. Please try again."
-        } else if (result.error.includes("Email and password are required")) {
-          errorTitle = "Missing Information"
-          errorDescription = "Please enter both email and password."
+        switch (code) {
+          case "ACCOUNT_NOT_FOUND":
+            errorTitle = "Account Not Found"
+            errorDescription = "No account found with this email. Please sign up first."
+            break
+          case "INVALID_PASSWORD":
+            errorTitle = "Incorrect Password"
+            errorDescription = "The password you entered is incorrect. Please try again."
+            break
+          case "MISSING_EMAIL_AND_PASSWORD":
+            errorTitle = "Missing Information"
+            errorDescription = "Please enter both email and password."
+            break
+          case "MISSING_EMAIL":
+            errorTitle = "Email Required"
+            errorDescription = "Please enter your email address."
+            break
+          case "MISSING_PASSWORD":
+            errorTitle = "Password Required"
+            errorDescription = "Please enter your password."
+            break
+          default:
+            // Fallback to the message if NextAuth passes it through
+            if (code && code !== "CredentialsSignin") {
+              errorDescription = code
+            }
         }
 
         toast({
