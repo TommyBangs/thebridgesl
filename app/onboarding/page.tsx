@@ -15,6 +15,8 @@ import { Camera, GraduationCap, MapPin, User, SkipForward, Briefcase, CheckCircl
 import { useToast } from "@/hooks/use-toast"
 import { apiPut } from "@/lib/api-client"
 import { Logo } from "@/components/shared/logo"
+import { ResumeUpload } from "@/components/ai/resume-upload"
+import type { ParsedResume } from "@/lib/ai/resume-parser"
 
 type UserStatus = "student" | "job_seeker" | "employed" | ""
 
@@ -25,6 +27,7 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const [userStatus, setUserStatus] = useState<UserStatus>("")
+  const [resumeParsed, setResumeParsed] = useState(false)
   const [formData, setFormData] = useState({
     bio: "",
     location: "",
@@ -35,6 +38,24 @@ export default function OnboardingPage() {
     currentCompany: "",
     avatar: "",
   })
+
+  const handleResumeParsed = (data: ParsedResume) => {
+    setResumeParsed(true)
+    // Pre-fill form with parsed data
+    if (data.bio) setFormData((prev) => ({ ...prev, bio: data.bio || prev.bio }))
+    if (data.location) setFormData((prev) => ({ ...prev, location: data.location || prev.location }))
+    if (data.experience && data.experience.length > 0) {
+      const latestExp = data.experience[0]
+      if (latestExp.title) setFormData((prev) => ({ ...prev, currentJobTitle: latestExp.title || prev.currentJobTitle }))
+      if (latestExp.company) setFormData((prev) => ({ ...prev, currentCompany: latestExp.company || prev.currentCompany }))
+    }
+    if (data.education && data.education.length > 0) {
+      const latestEdu = data.education[0]
+      if (latestEdu.institution) setFormData((prev) => ({ ...prev, university: latestEdu.institution || prev.university }))
+      if (latestEdu.field) setFormData((prev) => ({ ...prev, major: latestEdu.field || prev.major }))
+      if (latestEdu.graduationYear) setFormData((prev) => ({ ...prev, graduationYear: latestEdu.graduationYear || prev.graduationYear }))
+    }
+  }
 
   // Calculate total steps based on user status
   const getTotalSteps = () => {
@@ -59,9 +80,15 @@ export default function OnboardingPage() {
       return
     }
 
-    // If status was just selected, move to step 2
+    // If status was just selected, move to step 2 (resume upload)
     if (currentStep === 1 && userStatus) {
       setCurrentStep(2)
+      return
+    }
+
+    // If resume was parsed, move to basic info (step 3)
+    if (currentStep === 2 && resumeParsed) {
+      setCurrentStep(3)
       return
     }
 
@@ -86,7 +113,7 @@ export default function OnboardingPage() {
         title: "Skipped",
         description: "You can complete your profile later from settings",
       })
-      
+
       setTimeout(() => {
         window.location.href = "/"
       }, 500)
@@ -254,8 +281,21 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Step 2: Basic Info */}
-          {currentStep === 2 && (
+          {/* Step 2: Resume Upload (Optional) */}
+          {currentStep === 2 && !resumeParsed && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+              <ResumeUpload
+                onResumeParsed={handleResumeParsed}
+                onSkip={() => {
+                  setResumeParsed(true)
+                  setCurrentStep(3)
+                }}
+              />
+            </div>
+          )}
+
+          {/* Step 2/3: Basic Info (after resume or if skipped) */}
+          {currentStep === 2 && resumeParsed && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
               <div className="text-center space-y-2">
                 <div className="flex justify-center">
@@ -489,13 +529,13 @@ export default function OnboardingPage() {
                     )}
                   </>
                 )}
-                {!formData.bio && !formData.location && 
-                 !(userStatus === "student" && (formData.university || formData.major || formData.graduationYear)) &&
-                 !((userStatus === "job_seeker" || userStatus === "employed") && (formData.currentJobTitle || formData.currentCompany)) && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No information provided. You can add this later from your profile settings.
-                  </p>
-                )}
+                {!formData.bio && !formData.location &&
+                  !(userStatus === "student" && (formData.university || formData.major || formData.graduationYear)) &&
+                  !((userStatus === "job_seeker" || userStatus === "employed") && (formData.currentJobTitle || formData.currentCompany)) && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No information provided. You can add this later from your profile settings.
+                    </p>
+                  )}
               </div>
             </div>
           )}

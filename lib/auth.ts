@@ -11,26 +11,36 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Email and password are required")
+        // Normalize inputs
+        const email = credentials?.email?.toString().trim().toLowerCase() || ""
+        const password = credentials?.password?.toString() || ""
+
+        // Basic presence checks with explicit error codes
+        if (!email && !password) {
+          // NextAuth surfaces this string in `result.error`
+          throw new Error("MISSING_EMAIL_AND_PASSWORD")
+        }
+        if (!email) {
+          throw new Error("MISSING_EMAIL")
+        }
+        if (!password) {
+          throw new Error("MISSING_PASSWORD")
         }
 
         const user = await db.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email },
           include: { learnerProfile: true },
         })
 
         if (!user) {
-          throw new Error("Invalid email or password")
+          // Explicit code so the client can show “account not registered”
+          throw new Error("ACCOUNT_NOT_FOUND")
         }
 
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
-        )
-
+        const isPasswordValid = await bcrypt.compare(password, user.passwordHash)
         if (!isPasswordValid) {
-          throw new Error("Invalid email or password")
+          // Explicit code for wrong password
+          throw new Error("INVALID_PASSWORD")
         }
 
         return {

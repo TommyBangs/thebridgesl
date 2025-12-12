@@ -1,6 +1,13 @@
+/**
+ * Public Verification Endpoint
+ * Returns credential data with blockchain verification status
+ * No authentication required - public endpoint for QR code verification
+ */
+
 import { NextRequest, NextResponse } from "next/server"
-import { requireAuth, getUserId } from "@/lib/middleware"
 import { db } from "@/lib/db"
+import { verifyCredentialOnChain } from "@/lib/blockchain/verification"
+import { checkRateLimit } from "@/lib/ai/rate-limiter"
 
 export const runtime = "nodejs"
 
@@ -10,6 +17,16 @@ export async function GET(
 ) {
     try {
         const { id } = await params
+
+        // Rate limiting (10 requests per minute per IP)
+        const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "anonymous"
+        const rateLimit = checkRateLimit(ip, 10, 60000)
+        if (!rateLimit.allowed) {
+            return NextResponse.json(
+                { error: "Rate limit exceeded. Please try again later." },
+                { status: 429, headers: { "Retry-After": "60" } }
+            )
+        }
 
         const credential = await db.credential.findUnique({
             where: { id },
@@ -36,6 +53,18 @@ export async function GET(
             )
         }
 
+        // Perform blockchain verification (if anchored)
+        const cred = credential as any // Type assertion until Prisma is regenerated
+        let verification = null
+        if (credential.blockchainHash && cred.blockchainTxId) {
+            try {
+                verification = await verifyCredentialOnChain(id)
+            } catch (error) {
+                console.error("[Verify] Blockchain verification error:", error)
+                // Continue without verification if it fails
+            }
+        }
+
         return NextResponse.json({
             credential: {
                 id: credential.id,
@@ -46,6 +75,9 @@ export async function GET(
                 expiryDate: credential.expiryDate?.toISOString(),
                 verified: credential.verified,
                 blockchainHash: credential.blockchainHash,
+                blockchainTxId: cred.blockchainTxId,
+                blockchainStatus: cred.blockchainStatus,
+                blockchainChain: cred.blockchainChain,
                 qrCode: credential.qrCode,
                 user: {
                     id: credential.user.id,
@@ -56,6 +88,11 @@ export async function GET(
                     id: cs.skill.id,
                     name: cs.skill.name,
                 })),
+            },
+            verification: verification || {
+                verified: false,
+                reason: credential.blockchainHash ? "verification_pending" : "not_anchored",
+                timestamp: new Date(),
             },
         })
     } catch (error: any) {

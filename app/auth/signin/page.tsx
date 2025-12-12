@@ -22,19 +22,72 @@ export default function SignInPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Client-side validation
+    if (!formData.email.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!formData.password.trim()) {
+      toast({
+        title: "Password Required",
+        description: "Please enter your password",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
 
     try {
       const result = await signIn("credentials", {
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
         redirect: false,
       })
 
       if (result?.error) {
+        // Map known server error codes/messages to user-friendly toasts
+        const code = result.error
+        let errorTitle = "Login Failed"
+        let errorDescription = "Unable to sign in. Please try again."
+
+        switch (code) {
+          case "ACCOUNT_NOT_FOUND":
+            errorTitle = "Account Not Found"
+            errorDescription = "No account found with this email. Please sign up first."
+            break
+          case "INVALID_PASSWORD":
+            errorTitle = "Incorrect Password"
+            errorDescription = "The password you entered is incorrect. Please try again."
+            break
+          case "MISSING_EMAIL_AND_PASSWORD":
+            errorTitle = "Missing Information"
+            errorDescription = "Please enter both email and password."
+            break
+          case "MISSING_EMAIL":
+            errorTitle = "Email Required"
+            errorDescription = "Please enter your email address."
+            break
+          case "MISSING_PASSWORD":
+            errorTitle = "Password Required"
+            errorDescription = "Please enter your password."
+            break
+          default:
+            // Fallback to the message if NextAuth passes it through
+            if (code && code !== "CredentialsSignin") {
+              errorDescription = code
+            }
+        }
+
         toast({
-          title: "Error",
-          description: result.error,
+          title: errorTitle,
+          description: errorDescription,
           variant: "destructive",
         })
       } else {

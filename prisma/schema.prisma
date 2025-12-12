@@ -3,11 +3,13 @@
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 model User {
@@ -40,6 +42,8 @@ model User {
   projectCollaborators ProjectCollaborator[]
   endorsements        Endorsement[] @relation("UserEndorsements")
   passwordResetTokens PasswordResetToken[]
+
+  embedding           Unsupported("vector(1536)")?
 
   @@map("users")
 }
@@ -95,6 +99,8 @@ model Skill {
   courseSkills        CourseSkill[]
   trendingData        TrendingSkill?
   skillGaps           SkillGap[]
+
+  embedding           Unsupported("vector(1536)")?
 
   @@map("skills")
 }
@@ -153,6 +159,9 @@ model Credential {
   expiryDate    DateTime?       @map("expiry_date") @db.Date
   verified      Boolean         @default(false)
   blockchainHash String?        @map("blockchain_hash")
+  blockchainTxId String?        @map("blockchain_tx_id")
+  blockchainStatus String?      @map("blockchain_status")
+  blockchainChain String?       @map("blockchain_chain")
   qrCode        String?         @map("qr_code")
   createdAt     DateTime        @default(now()) @map("created_at")
 
@@ -201,6 +210,8 @@ model Project {
   projectSkills     ProjectSkill[]
   collaborators     ProjectCollaborator[]
   endorsements      Endorsement[] @relation("ProjectEndorsements")
+
+  embedding         Unsupported("vector(1536)")?
 
   @@map("projects")
 }
@@ -293,6 +304,8 @@ model Opportunity {
   requirements OpportunityRequirement[]
   opportunitySkills OpportunitySkill[]
   applications Application[]
+
+  embedding     Unsupported("vector(1536)")?
 
   @@map("opportunities")
 }

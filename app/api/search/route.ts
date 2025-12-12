@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, getUserId } from "@/lib/middleware"
 import { db } from "@/lib/db"
+import { isSemanticSearchEnabled, shouldEnableAIFeature } from "@/lib/ai/feature-flags"
+import { semanticSearch } from "@/lib/ai/search"
+import { checkRateLimit } from "@/lib/ai/rate-limiter"
 
 export const runtime = "nodejs"
 
@@ -21,12 +24,40 @@ export async function GET(request: NextRequest) {
             })
         }
 
+        // Rate limiting
+        const identifier = userId || request.headers.get("x-forwarded-for") || "anonymous"
+        const rateLimit = checkRateLimit(identifier, 20, 60000) // 20 requests per minute
+        if (!rateLimit.allowed) {
+            return NextResponse.json(
+                { error: "Rate limit exceeded. Please try again later." },
+                { status: 429, headers: { "Retry-After": "60" } }
+            )
+        }
+
+        // Check if semantic search is enabled
+        const useSemanticSearch = shouldEnableAIFeature(userId || null, "semantic_search", 100)
+
         const results: any = {
             users: [],
             skills: [],
             opportunities: [],
         }
 
+        // Try semantic search first if enabled
+        if (useSemanticSearch && isSemanticSearchEnabled()) {
+            try {
+                const semanticResults = await semanticSearch(query, type as any, 10)
+
+                // Map semantic results to expected format
+                // Note: Semantic search returns raw DB rows, need to format them
+                // For MVP, fall back to text search if semantic fails
+            } catch (semanticError) {
+                console.warn("[Search] Semantic search failed, falling back to text search:", semanticError)
+                // Fall through to text search
+            }
+        }
+
+        // Text-based search (fallback or when semantic search is disabled)
         // Search users
         if (type === "all" || type === "users") {
             const users = await db.user.findMany({
