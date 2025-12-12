@@ -22,19 +22,54 @@ export default function SignInPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Client-side validation
+    if (!formData.email.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!formData.password.trim()) {
+      toast({
+        title: "Password Required",
+        description: "Please enter your password",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
 
     try {
       const result = await signIn("credentials", {
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
         redirect: false,
       })
 
       if (result?.error) {
+        // Handle specific error messages
+        let errorTitle = "Login Failed"
+        let errorDescription = result.error
+
+        if (result.error.includes("Account not found") || result.error.includes("not registered")) {
+          errorTitle = "Account Not Found"
+          errorDescription = "No account found with this email address. Please sign up first."
+        } else if (result.error.includes("Invalid password") || result.error.includes("incorrect password")) {
+          errorTitle = "Incorrect Password"
+          errorDescription = "The password you entered is incorrect. Please try again."
+        } else if (result.error.includes("Email and password are required")) {
+          errorTitle = "Missing Information"
+          errorDescription = "Please enter both email and password."
+        }
+
         toast({
-          title: "Error",
-          description: result.error,
+          title: errorTitle,
+          description: errorDescription,
           variant: "destructive",
         })
       } else {

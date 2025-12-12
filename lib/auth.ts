@@ -15,22 +15,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           throw new Error("Email and password are required")
         }
 
+        const email = (credentials.email as string).trim().toLowerCase()
+        const password = credentials.password as string
+
+        // Check if password is provided
+        if (!password || password.length === 0) {
+          throw new Error("Password is required")
+        }
+
         const user = await db.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email },
           include: { learnerProfile: true },
         })
 
+        // Check if account exists
         if (!user) {
-          throw new Error("Invalid email or password")
+          throw new Error("Account not found. Please sign up first.")
         }
 
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
-        )
+        // Verify password
+        const isPasswordValid = await bcrypt.compare(password, user.passwordHash)
 
         if (!isPasswordValid) {
-          throw new Error("Invalid email or password")
+          throw new Error("Invalid password. Please check your password and try again.")
         }
 
         return {

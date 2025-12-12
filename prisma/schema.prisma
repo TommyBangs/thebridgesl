@@ -157,6 +157,9 @@ model Credential {
   expiryDate    DateTime?       @map("expiry_date") @db.Date
   verified      Boolean         @default(false)
   blockchainHash String?        @map("blockchain_hash")
+  blockchainTxId String?        @map("blockchain_tx_id")
+  blockchainStatus String?      @map("blockchain_status")
+  blockchainChain String?       @map("blockchain_chain")
   qrCode        String?         @map("qr_code")
   createdAt     DateTime        @default(now()) @map("created_at")
 
