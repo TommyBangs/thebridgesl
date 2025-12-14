@@ -18,7 +18,16 @@ export async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "/api"
-  const url = `${baseUrl}${endpoint}`
+  // Remove leading slash from endpoint if it exists to avoid double slashes
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint
+
+  // If endpoint already starts with "api/", don't prepend baseUrl if it's also "/api"
+  let url: string
+  if (baseUrl === "/api" && cleanEndpoint.startsWith("api/")) {
+    url = `/${cleanEndpoint}`
+  } else {
+    url = `${baseUrl}/${cleanEndpoint}`.replace(/([^:]\/)\/+/g, "$1") // Remove double slashes
+  }
 
   // Debug logging
   if (process.env.NODE_ENV === "development") {
@@ -37,7 +46,7 @@ export async function apiRequest<T>(
   if (!response.ok) {
     let error: any
     const contentType = response.headers.get("content-type")
-    
+
     // Try to parse JSON error response
     if (contentType && contentType.includes("application/json")) {
       try {
@@ -80,22 +89,22 @@ export async function apiRequest<T>(
         }
       }
     }
-    
+
     // Extract error message with better fallback
     let errorMessage = error.message || error.error || `HTTP ${response.status}: ${response.statusText}`
-    
+
     // If we have a more specific message from the API, use it
     if (error.message && typeof error.message === 'string' && error.message.length > 0) {
       errorMessage = error.message
     } else if (error.error && typeof error.error === 'string' && error.error.length > 0) {
       errorMessage = error.error
     }
-    
+
     // Provide user-friendly messages for common errors
     if (response.status === 500 && !errorMessage.includes("Database") && !errorMessage.includes("Unable to fetch")) {
       errorMessage = "A server error occurred. Please try again later."
     }
-    
+
     throw new ApiError(response.status, errorMessage, error)
   }
 

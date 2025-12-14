@@ -45,11 +45,14 @@ export default function SignInPage() {
     setLoading(true)
 
     try {
+      console.log("[SignIn] Attempting to sign in with email:", formData.email.trim())
       const result = await signIn("credentials", {
         email: formData.email.trim(),
         password: formData.password,
         redirect: false,
       })
+
+      console.log("[SignIn] Sign in result:", { error: result?.error, ok: result?.ok, url: result?.url })
 
       if (result?.error) {
         // Map known server error codes/messages to user-friendly toasts
@@ -77,6 +80,14 @@ export default function SignInPage() {
           case "MISSING_PASSWORD":
             errorTitle = "Password Required"
             errorDescription = "Please enter your password."
+            break
+          case "DATABASE_ERROR":
+            errorTitle = "Connection Error"
+            errorDescription = "Unable to connect to the database. Please try again later."
+            break
+          case "Configuration":
+            errorTitle = "Configuration Error"
+            errorDescription = "Authentication is not properly configured. Please check that AUTH_SECRET or NEXTAUTH_SECRET is set in your environment variables."
             break
           default:
             // Fallback to the message if NextAuth passes it through

@@ -1,6 +1,9 @@
+"use client"
+
 import Link from "next/link"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
+import { useState, useEffect } from "react"
 
 interface LogoProps {
   className?: string
@@ -10,6 +13,12 @@ interface LogoProps {
 }
 
 export function Logo({ className, size = "md", variant = "full", href = "/" }: LogoProps) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const imageSizes = {
     sm: { width: 70, height: 22 },
     md: { width: 100, height: 32 },
@@ -26,14 +35,18 @@ export function Logo({ className, size = "md", variant = "full", href = "/" }: L
 
   const content = (
     <div className={cn("flex items-center", className)}>
-      <Image
-        src="/bridgesl.png"
-        alt="Bridge"
-        width={dimensions.width}
-        height={dimensions.height}
-        priority
-        className="object-contain"
-      />
+      {mounted ? (
+        <Image
+          src="/bridgesl.png"
+          alt="Bridge"
+          width={dimensions.width}
+          height={dimensions.height}
+          priority
+          className="object-contain"
+        />
+      ) : (
+        <div style={{ width: dimensions.width, height: dimensions.height }} />
+      )}
     </div>
   )
 

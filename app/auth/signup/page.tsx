@@ -47,23 +47,28 @@ export default function SignUpPage() {
     setLoading(true)
 
     try {
-      await apiPost("/auth/register", {
+      console.log("[SignUp] Attempting to register user:", formData.email)
+      const registerResult = await apiPost("/auth/register", {
         name: formData.name,
         email: formData.email,
         password: formData.password,
       })
+      console.log("[SignUp] Registration result:", registerResult)
 
       toast({
         title: "Success",
         description: "Account created successfully!",
       })
-      
+
       // Sign in the user automatically
+      console.log("[SignUp] Attempting to sign in after registration")
       const signInResult = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
         redirect: false,
       })
+
+      console.log("[SignUp] Sign in result:", { error: signInResult?.error, ok: signInResult?.ok })
 
       if (signInResult?.error) {
         router.push("/auth/signin")

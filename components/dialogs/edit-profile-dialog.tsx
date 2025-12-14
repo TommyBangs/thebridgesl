@@ -14,21 +14,88 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { apiPut } from "@/lib/api-client"
 import { useApi } from "@/lib/hooks/use-api"
-import { Loader2 } from "lucide-react"
+import { Loader2, Check, ChevronsUpDown } from "lucide-react"
+import { cn } from "@/lib/utils"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 interface EditProfileDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
+const SIERRA_LEONE_CITIES = [
+  "Freetown",
+  "Bo",
+  "Kenema",
+  "Makeni",
+  "Koidu",
+  "Lunsar",
+  "Port Loko",
+  "Waterloo",
+  "Kabala",
+  "Segbwema",
+  "Magburaka",
+  "Kailahun",
+  "Bonthe",
+  "Mattru Jong",
+  "Kambia",
+  "Pujehun",
+  "Moyamba",
+]
+
+const MAJORS = [
+  "Computer Science",
+  "Information Technology",
+  "Software Engineering",
+  "Business Administration",
+  "Accounting",
+  "Economics",
+  "Law",
+  "Medicine",
+  "Nursing",
+  "Public Health",
+  "Engineering (Civil)",
+  "Engineering (Electrical)",
+  "Engineering (Mechanical)",
+  "Agriculture",
+  "Education",
+  "Mass Communication",
+  "Political Science",
+  "Sociology",
+  "Other",
+]
+
 export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
   const { data: profileData, refetch } = useApi<{ user: any }>("/api/users/profile")
   const [loading, setLoading] = useState(false)
+  const [locationOpen, setLocationOpen] = useState(false)
+  const [majorSelectValue, setMajorSelectValue] = useState("")
+  const [showOtherMajor, setShowOtherMajor] = useState(false)
+
   const [formData, setFormData] = useState({
     name: "",
     bio: "",
@@ -49,8 +116,15 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
   const user = profileData?.user
 
   // Populate form when profile data loads
+  // Populate form when profile data loads
   useEffect(() => {
     if (user) {
+      const currentMajor = user.learnerProfile?.major || ""
+      const isStandardMajor = MAJORS.includes(currentMajor)
+
+      setMajorSelectValue(isStandardMajor ? currentMajor : (currentMajor ? "Other" : ""))
+      setShowOtherMajor(!isStandardMajor && !!currentMajor)
+
       setFormData({
         name: user.name || "",
         bio: user.learnerProfile?.bio || "",
@@ -58,7 +132,7 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
         phone: user.learnerProfile?.phone || "",
         website: user.learnerProfile?.website || "",
         university: user.learnerProfile?.university || "",
-        major: user.learnerProfile?.major || "",
+        major: currentMajor,
         graduationYear: user.learnerProfile?.graduationYear?.toString() || "",
         currentJobTitle: user.learnerProfile?.currentJobTitle || "",
         currentCompany: user.learnerProfile?.currentCompany || "",
@@ -123,7 +197,7 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
           {/* Basic Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Basic Information</h3>
-            
+
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input
@@ -150,15 +224,52 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-2 flex flex-col">
                 <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  disabled={loading}
-                  placeholder="City, Country"
-                />
+                <Popover open={locationOpen} onOpenChange={setLocationOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={locationOpen}
+                      className="w-full justify-between"
+                      disabled={loading}
+                    >
+                      {formData.location
+                        ? formData.location
+                        : "Select city..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search city..." />
+                      <CommandList>
+                        <CommandEmpty>No city found.</CommandEmpty>
+                        <CommandGroup>
+                          {SIERRA_LEONE_CITIES.map((city) => (
+                            <CommandItem
+                              key={city}
+                              value={city}
+                              onSelect={(currentValue) => {
+                                setFormData({ ...formData, location: `${currentValue}, Sierra Leone` })
+                                setLocationOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.location === `${city}, Sierra Leone` ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {city}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="space-y-2">
@@ -190,7 +301,7 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
           {/* Education */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Education</h3>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="university">University / Institution</Label>
@@ -205,13 +316,40 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
 
               <div className="space-y-2">
                 <Label htmlFor="major">Major / Field of Study</Label>
-                <Input
-                  id="major"
-                  value={formData.major}
-                  onChange={(e) => setFormData({ ...formData, major: e.target.value })}
+                <Select
+                  value={majorSelectValue}
+                  onValueChange={(value) => {
+                    setMajorSelectValue(value)
+                    if (value === "Other") {
+                      setShowOtherMajor(true)
+                      setFormData({ ...formData, major: "" })
+                    } else {
+                      setShowOtherMajor(false)
+                      setFormData({ ...formData, major: value })
+                    }
+                  }}
                   disabled={loading}
-                  placeholder="Field of study"
-                />
+                >
+                  <SelectTrigger id="major">
+                    <SelectValue placeholder="Select Major" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MAJORS.map((major) => (
+                      <SelectItem key={major} value={major}>
+                        {major}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {showOtherMajor && (
+                  <Input
+                    value={formData.major}
+                    onChange={(e) => setFormData({ ...formData, major: e.target.value })}
+                    placeholder="Enter your major"
+                    className="mt-2"
+                    disabled={loading}
+                  />
+                )}
               </div>
             </div>
 
@@ -233,7 +371,7 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
           {/* Professional Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Professional Information</h3>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="currentJobTitle">Current Job Title</Label>
@@ -262,7 +400,7 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
           {/* Social Links */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Social Links</h3>
-            
+
             <div className="space-y-2">
               <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
               <Input

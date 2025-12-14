@@ -1,4 +1,5 @@
 import { PrismaClient, UserRole, SkillCategory, SkillLevel, CredentialType, Visibility, MediaType, OpportunityType, ApplicationStatus, ConnectionType, ConnectionRequestStatus, FeedItemType, Priority, NotificationType, VerificationStatus, EndorsementTarget } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
@@ -13,7 +14,8 @@ async function main() {
         usersData.push({
             email: `user${i}@example.com`,
             name: `User ${i}`,
-            passwordHash: '$2b$10$EpRnTzVlqHNP0.fKbX9.O.jQz.jQz.jQz.jQz.jQz.jQz.jQz.jQz', // dummy hash
+            passwordHash: await bcrypt.hash('password', 10),
+
             role: roles[i % 3],
             onboarded: true,
             avatar: `https://i.pravatar.cc/150?u=user${i}`,
