@@ -34,29 +34,35 @@ export function QuickActionCard({
   const Icon = iconMap[icon]
 
   const cardContent = (
-    <CardContent className="flex flex-col items-start gap-2 p-3 sm:gap-3 sm:p-4">
+    <CardContent className="flex flex-col items-start gap-2 p-4 sm:gap-3 sm:p-5 relative overflow-hidden group-hover:bg-gradient-to-br group-hover:from-primary/5 group-hover:to-transparent transition-all">
+      {/* Decorative background gradient on hover */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+      
       <div
         className={cn(
-          "rounded-lg p-2 transition-colors",
-          variant === "primary" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+          "rounded-xl p-3 transition-all relative z-10",
+          variant === "primary" 
+            ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/20" 
+            : "bg-gradient-to-br from-muted to-muted/80 text-foreground",
         )}
       >
-        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+        <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
       </div>
-      <div className="flex-1 space-y-0.5">
+      <div className="flex-1 space-y-1 relative z-10">
         <h3 className="text-sm font-semibold sm:text-base">{title}</h3>
-        <p className="text-xs text-muted-foreground sm:text-sm">{description}</p>
+        <p className="text-xs text-muted-foreground sm:text-sm leading-relaxed">{description}</p>
       </div>
     </CardContent>
   )
 
   if (href) {
     return (
-      <Link href={href} className="block">
+      <Link href={href} className="block group">
         <Card
           className={cn(
-            "cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98]",
-            variant === "primary" && "border-primary bg-primary/5",
+            "cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border-2",
+            variant === "primary" && "border-primary/30 bg-gradient-to-br from-primary/5 to-transparent hover:border-primary/50",
+            !variant || variant === "default" && "hover:border-primary/20",
             className,
           )}
         >
@@ -69,8 +75,9 @@ export function QuickActionCard({
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98]",
-        variant === "primary" && "border-primary bg-primary/5",
+        "cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border-2 group",
+        variant === "primary" && "border-primary/30 bg-gradient-to-br from-primary/5 to-transparent hover:border-primary/50",
+        !variant || variant === "default" && "hover:border-primary/20",
         className,
       )}
       onClick={onClick}

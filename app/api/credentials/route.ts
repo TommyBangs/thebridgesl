@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Require INSTITUTION role for credential issuance
-    const session = await requireIssuerRole(request)
+    // Allow both INSTITUTION role (for issuing) and regular users (for adding their own credentials)
+    const session = await requireAuth(request)
     const userId = getUserId(session)
     const body = await request.json()
 

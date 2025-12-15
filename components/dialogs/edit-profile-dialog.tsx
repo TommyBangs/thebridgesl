@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,8 +24,10 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { apiPut } from "@/lib/api-client"
 import { useApi } from "@/lib/hooks/use-api"
-import { Loader2, Check, ChevronsUpDown } from "lucide-react"
+import { Loader2, Check, ChevronsUpDown, Camera, Image as ImageIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ACCEPTED_IMAGE_TYPES, MAX_FILE_SIZE } from "@/lib/constants"
 import {
   Command,
   CommandEmpty,
@@ -92,6 +94,8 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
   const { toast } = useToast()
   const { data: profileData, refetch } = useApi<{ user: any }>("/api/users/profile")
   const [loading, setLoading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const coverImageInputRef = useRef<HTMLInputElement | null>(null)
   const [locationOpen, setLocationOpen] = useState(false)
   const [majorSelectValue, setMajorSelectValue] = useState("")
   const [showOtherMajor, setShowOtherMajor] = useState(false)
@@ -111,9 +115,87 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
     githubUrl: "",
     portfolioUrl: "",
     avatar: "",
+    coverImage: "",
   })
 
   const user = profileData?.user
+  const initials =
+    user?.name
+      ?.split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "U"
+
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      toast({
+        title: "Unsupported file type",
+        description: "Please upload a JPG, PNG, or WebP image.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 10MB.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const result = reader.result
+      if (typeof result === "string") {
+        setFormData((prev) => ({
+          ...prev,
+          avatar: result,
+        }))
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleCoverImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      toast({
+        title: "Unsupported file type",
+        description: "Please upload a JPG, PNG, or WebP image.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 10MB.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const result = reader.result
+      if (typeof result === "string") {
+        setFormData((prev) => ({
+          ...prev,
+          coverImage: result,
+        }))
+      }
+    }
+    reader.readAsDataURL(file)
+  }
 
   // Populate form when profile data loads
   // Populate form when profile data loads
@@ -140,6 +222,7 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
         githubUrl: user.learnerProfile?.githubUrl || "",
         portfolioUrl: user.learnerProfile?.portfolioUrl || "",
         avatar: user.avatar || "",
+        coverImage: user.coverImage || "",
       })
     }
   }, [user])
@@ -164,6 +247,7 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
         githubUrl: formData.githubUrl || null,
         portfolioUrl: formData.portfolioUrl || null,
         avatar: formData.avatar || null,
+        coverImage: formData.coverImage || null,
       })
 
       toast({
@@ -194,6 +278,99 @@ export function EditProfileDialog({ open, onOpenChange }: EditProfileDialogProps
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Profile Photo */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Profile Photo</h3>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={formData.avatar || user?.avatar || "/placeholder-user.jpg"} alt={user?.name || "User"} />
+                  <AvatarFallback className="text-xl">{initials}</AvatarFallback>
+                </Avatar>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="secondary"
+                  className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loading}
+                >
+                  <Camera className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="space-y-1 text-sm text-muted-foreground">
+                <p className="font-medium flex items-center gap-1">
+                  <ImageIcon className="h-4 w-4" />
+                  Upload a new profile picture
+                </p>
+                <p>JPG, PNG, or WebP up to 10MB.</p>
+              </div>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED_IMAGE_TYPES.join(",")}
+              className="hidden"
+              onChange={handleAvatarChange}
+              disabled={loading}
+            />
+          </div>
+
+          {/* Cover Image */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Cover Image</h3>
+            <div className="space-y-3">
+              <div className="relative w-full h-48 rounded-lg overflow-hidden border border-border bg-gradient-to-br from-muted/50 to-muted/30">
+                {formData.coverImage ? (
+                  <img 
+                    src={formData.coverImage} 
+                    alt="Cover preview" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : user?.coverImage ? (
+                  <img 
+                    src={user.coverImage} 
+                    alt="Current cover" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
+                    <div className="text-center space-y-2">
+                      <ImageIcon className="h-8 w-8 text-muted-foreground/50 mx-auto" />
+                      <p className="text-sm text-muted-foreground">No cover image</p>
+                    </div>
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="absolute top-3 right-3"
+                  onClick={() => coverImageInputRef.current?.click()}
+                  disabled={loading}
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  {formData.coverImage || user?.coverImage ? "Change" : "Upload"}
+                </Button>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <p className="font-medium flex items-center gap-1 mb-1">
+                  <ImageIcon className="h-4 w-4" />
+                  Upload a cover image
+                </p>
+                <p>JPG, PNG, or WebP up to 10MB. Recommended size: 1920x640px</p>
+              </div>
+            </div>
+            <input
+              ref={coverImageInputRef}
+              type="file"
+              accept={ACCEPTED_IMAGE_TYPES.join(",")}
+              className="hidden"
+              onChange={handleCoverImageChange}
+              disabled={loading}
+            />
+          </div>
+
           {/* Basic Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Basic Information</h3>

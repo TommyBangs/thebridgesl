@@ -37,7 +37,7 @@ export function Header() {
     .slice(0, 2) || "U"
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-card/80 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-card/95 backdrop-blur-md shadow-sm">
       <div className="container mx-auto flex h-16 items-center gap-4 px-4">
         <Logo variant="full" size="sm" />
 
@@ -45,32 +45,38 @@ export function Header() {
           <div className="hidden flex-1 md:block md:max-w-md">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input type="search" placeholder="Search skills, jobs, people..." className="pl-9" />
+              <Input 
+                type="search" 
+                placeholder="Search skills, jobs, people..." 
+                className="pl-9 border-border/50 focus:border-primary/50 focus:ring-primary/20" 
+              />
             </div>
           </div>
 
           <nav className="ml-auto flex items-center gap-2">
             <Link href={ROUTES.DISCOVER} className="md:hidden">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary">
                 <Compass className="h-6 w-6" />
                 <span className="sr-only">Discover</span>
               </Button>
             </Link>
 
             <Link href={ROUTES.NOTIFICATIONS}>
-              <Button variant="ghost" size="icon" className="relative">
+              <Button variant="ghost" size="icon" className="relative hover:bg-primary/10 hover:text-primary">
                 <Bell className="h-6 w-6" />
-                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-destructive" />
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive ring-2 ring-background animate-pulse" />
                 <span className="sr-only">Notifications</span>
               </Button>
             </Link>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <Avatar className="h-9 w-9">
+                <Button variant="ghost" size="icon" className="rounded-full hover:ring-2 hover:ring-primary/20 transition-all">
+                  <Avatar className="h-9 w-9 ring-2 ring-border hover:ring-primary/40 transition-all">
                     <AvatarImage src={user?.avatar || "/placeholder-user.jpg"} alt={user?.name || "User"} />
-                    <AvatarFallback>{initials}</AvatarFallback>
+                    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
                   <span className="sr-only">User menu</span>
                 </Button>

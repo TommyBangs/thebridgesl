@@ -43,9 +43,10 @@ export async function apiRequest<T>(
     },
   })
 
+  const contentType = response.headers.get("content-type")
+  
   if (!response.ok) {
     let error: any
-    const contentType = response.headers.get("content-type")
 
     // Try to parse JSON error response
     if (contentType && contentType.includes("application/json")) {
@@ -108,7 +109,33 @@ export async function apiRequest<T>(
     throw new ApiError(response.status, errorMessage, error)
   }
 
-  return response.json()
+  // Check if response has content and is JSON before parsing
+  if (contentType && contentType.includes("application/json")) {
+    try {
+      return await response.json()
+    } catch (parseError) {
+      // If JSON parsing fails even though content-type says JSON, return empty object
+      console.error("[API Client] Failed to parse JSON response:", parseError)
+      return {} as T
+    }
+  }
+  
+  // If response is not JSON, try to get text or return empty
+  try {
+    const text = await response.text()
+    if (text) {
+      // Try to parse as JSON anyway
+      try {
+        return JSON.parse(text) as T
+      } catch {
+        // If it's not JSON, return the text wrapped in an object
+        return { data: text } as T
+      }
+    }
+    return {} as T
+  } catch {
+    return {} as T
+  }
 }
 
 export async function apiPost<T>(

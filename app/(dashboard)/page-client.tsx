@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { ArrowUpRight, TrendingUp, BookOpen, ArrowRight, ExternalLink, Briefcase } from "lucide-react"
+import { ArrowUpRight, TrendingUp, BookOpen, ArrowRight, ExternalLink, Briefcase, Search } from "lucide-react"
 import { AddProjectDialog } from "@/components/dialogs/add-project-dialog"
 import { VerifySkillDialog } from "@/components/dialogs/verify-skill-dialog"
 import { useApi } from "@/lib/hooks/use-api"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import { EmptyState } from "@/components/shared/empty-state"
+import { cn } from "@/lib/utils"
 import type { Skill, Opportunity } from "@/types"
 
 export default function HomePageClient() {
@@ -86,29 +87,47 @@ export default function HomePageClient() {
       </section>
 
       <section>
-        <Card className="border-muted">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Profile completeness</CardTitle>
+        <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Briefcase className="h-5 w-5 text-primary" />
+              </div>
+              <CardTitle className="text-lg">Profile completeness</CardTitle>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-sm text-muted-foreground">Complete your profile to improve matches</div>
-              <span className="text-sm font-semibold">{profileCompletion.percent}%</span>
+              <span className="text-2xl font-bold text-primary">{profileCompletion.percent}%</span>
             </div>
-            <Progress value={profileCompletion.percent} />
-            <div className="space-y-2">
+            <Progress value={profileCompletion.percent} className="h-2.5" />
+            <div className="space-y-2.5 pt-1">
               {profileCompletion.checklist.map((item) => (
-                <div key={item.label} className="flex items-center gap-2 text-sm">
-                  <span
-                    className={`h-2 w-2 rounded-full ${item.done ? "bg-green-500" : "bg-muted-foreground/40"}`}
-                    aria-hidden
-                  />
-                  <span className={item.done ? "line-through text-muted-foreground" : ""}>{item.label}</span>
+                <div key={item.label} className="flex items-center gap-3 text-sm">
+                  <div className={cn(
+                    "flex-shrink-0 h-5 w-5 rounded-full flex items-center justify-center transition-all",
+                    item.done 
+                      ? "bg-success ring-2 ring-success/20" 
+                      : "bg-muted-foreground/20 ring-2 ring-muted-foreground/10"
+                  )}>
+                    {item.done ? (
+                      <span className="text-[10px] font-bold text-success-foreground">✓</span>
+                    ) : (
+                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                    )}
+                  </div>
+                  <span className={cn(
+                    "transition-all",
+                    item.done ? "line-through text-muted-foreground" : "font-medium"
+                  )}>
+                    {item.label}
+                  </span>
                 </div>
               ))}
             </div>
-            <div className="flex gap-2">
-              <Button asChild variant="outline" size="sm">
+            <div className="flex gap-2 pt-2">
+              <Button asChild variant="outline" size="sm" className="border-primary/30">
                 <Link href="/profile">Edit profile</Link>
               </Button>
               <Button asChild variant="ghost" size="sm">
@@ -120,15 +139,20 @@ export default function HomePageClient() {
       </section>
 
       <section>
-        <Card className="border-primary bg-primary/5">
+        <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-lg shadow-primary/10">
           <CardContent className="flex items-center justify-between p-6">
-            <div>
-              <p className="text-sm text-muted-foreground">Your Skills Match</p>
-              <p className="text-4xl font-bold text-primary">{skillsMatchPercentage}%</p>
-              <p className="text-sm text-muted-foreground">Above industry average</p>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Your Skills Match</p>
+              <p className="text-5xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                {skillsMatchPercentage}%
+              </p>
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+                Above industry average
+              </p>
             </div>
-            <div className="rounded-full bg-primary/10 p-4">
-              <TrendingUp className="h-8 w-8 text-primary" />
+            <div className="rounded-full bg-gradient-to-br from-primary/20 to-primary/10 p-5 ring-4 ring-primary/10">
+              <TrendingUp className="h-10 w-10 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -157,7 +181,11 @@ export default function HomePageClient() {
                 ))}
               </div>
             ) : (
-              <EmptyState title="No trending skills" description="Check back later for trending skills data" />
+              <EmptyState 
+                icon={TrendingUp}
+                title="No trending skills" 
+                description="Check back later for trending skills data" 
+              />
             )}
           </section>
 
@@ -184,7 +212,11 @@ export default function HomePageClient() {
                 ))}
               </div>
             ) : (
-              <EmptyState title="No opportunities" description="Check back later for new opportunities" />
+              <EmptyState 
+                icon={Briefcase}
+                title="No opportunities" 
+                description="Check back later for new opportunities" 
+              />
             )}
           </section>
 

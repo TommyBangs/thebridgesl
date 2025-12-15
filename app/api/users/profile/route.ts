@@ -107,6 +107,12 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       console.error("Profile API - User not found for ID:", userId)
+      console.error("Profile API - Session user:", {
+        id: session?.user?.id,
+        email: session?.user?.email,
+        name: session?.user?.name,
+      })
+      
       // Try to find user by email as fallback
       const sessionUser = session?.user
       if (sessionUser?.email) {
@@ -142,8 +148,12 @@ export async function GET(request: NextRequest) {
             },
           })
           if (userByEmail) {
-            console.log("Profile API - Found user by email:", userByEmail.email)
+            console.log("Profile API - Found user by email (ID mismatch):", userByEmail.email)
+            console.log("Profile API - Session ID:", userId, "Database ID:", userByEmail.id)
+            // Update the session ID if it doesn't match (this is just for logging, the session needs to be refreshed)
             user = userByEmail
+          } else {
+            console.error("Profile API - User not found by email either:", sessionUser.email)
           }
         } catch (emailError: any) {
           console.error("Profile API - Error finding user by email:", emailError)
@@ -151,8 +161,13 @@ export async function GET(request: NextRequest) {
       }
       
       if (!user) {
+        // User doesn't exist in database - likely session is stale or user was deleted
+        console.error("Profile API - User does not exist in database. Session may be invalid.")
         return NextResponse.json(
-          { error: "User not found", message: "Your account could not be found. Please contact support." },
+          { 
+            error: "User not found", 
+            message: "Your account could not be found. This may happen if your session is outdated. Please try signing out and signing back in. If the problem persists, please contact support." 
+          },
           { status: 404 }
         )
       }
@@ -299,7 +314,8 @@ export async function PUT(request: NextRequest) {
       linkedinUrl,
       githubUrl,
       portfolioUrl,
-      avatar 
+      avatar,
+      coverImage
     } = body
 
     const user = await db.user.update({
@@ -307,6 +323,7 @@ export async function PUT(request: NextRequest) {
       data: {
         ...(name !== undefined && { name }),
         ...(avatar !== undefined && { avatar }),
+        ...(coverImage !== undefined && { coverImage }),
         learnerProfile: {
           upsert: {
             create: {
