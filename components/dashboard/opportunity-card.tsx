@@ -39,13 +39,22 @@ export function OpportunityCard({ opportunity, onApply }: OpportunityCardProps) 
 
   return (
     <>
-      <Card className="overflow-hidden transition-all hover:shadow-md cursor-pointer" onClick={handleCardClick}>
+      <Card className="overflow-hidden transition-all hover:shadow-lg hover:scale-[1.01] cursor-pointer border-2 hover:border-primary/30 group" onClick={handleCardClick}>
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={companyLogo || "/placeholder.svg"} alt={company} />
-              <AvatarFallback>{company[0]}</AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="h-14 w-14 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all">
+                <AvatarImage src={companyLogo || "/generic-company-logo.png"} alt={company} />
+                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
+                  {company[0]}
+                </AvatarFallback>
+              </Avatar>
+              {matchScore && matchScore > 75 && (
+                <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-success ring-2 ring-background flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-success-foreground">✓</span>
+                </div>
+              )}
+            </div>
 
             <div className="flex-1 space-y-3">
               <div>

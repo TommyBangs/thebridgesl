@@ -19,6 +19,7 @@ import {
   Linkedin,
   Github,
   Link as LinkIcon,
+  Image as ImageIcon,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -30,6 +31,7 @@ import { SkillBadge } from "@/components/shared/skill-badge"
 import { CircularProgress } from "@/components/shared/circular-progress"
 import { DownloadProfileDialog } from "@/components/dialogs/download-profile-dialog"
 import { EditProfileDialog } from "@/components/dialogs/edit-profile-dialog"
+import { UploadImageDialog } from "@/components/dialogs/upload-image-dialog"
 import { useApi } from "@/lib/hooks/use-api"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -39,6 +41,8 @@ import Link from "next/link"
 export default function ProfilePageClient() {
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [avatarUploadOpen, setAvatarUploadOpen] = useState(false)
+  const [coverUploadOpen, setCoverUploadOpen] = useState(false)
   const { data: profileData, loading, error } = useApi<{ user: any }>("/users/profile")
 
   const user = profileData?.user
@@ -142,42 +146,82 @@ export default function ProfilePageClient() {
           }
         />
 
-        {/* Profile Header */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col gap-6 md:flex-row md:items-start">
-              <div className="relative">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                  <AvatarFallback className="text-xl">{initials}</AvatarFallback>
-                </Avatar>
-                <Button 
-                  size="icon" 
-                  variant="secondary" 
-                  className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
-                  onClick={() => setEditDialogOpen(true)}
-                >
-                  <Camera className="h-4 w-4" />
-                </Button>
+        {/* Cover Photo Section */}
+        <div className="relative w-full -mx-4 md:-mx-6 lg:-mx-8 mb-0">
+          {/* Cover Photo */}
+          <div className="relative w-full h-[320px] md:h-[400px] bg-gradient-to-br from-primary/5 via-primary/3 to-muted/50 overflow-hidden">
+            {profile?.coverImage ? (
+              <img 
+                src={profile.coverImage} 
+                alt="Cover" 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="text-center space-y-2">
+                  <div className="p-3 rounded-full bg-primary/10 mx-auto w-fit">
+                    <ImageIcon className="h-8 w-8 text-primary/50" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Add Cover Photo</p>
+                </div>
+              </div>
+            )}
+            {/* Edit Cover Photo Button */}
+            <Button
+              size="icon"
+              variant="secondary"
+              className="absolute bottom-4 right-4 h-10 w-10 rounded-full backdrop-blur-md bg-white/90 hover:bg-white border border-border/50 shadow-lg transition-all hover:scale-105"
+              onClick={() => setCoverUploadOpen(true)}
+            >
+              <Camera className="h-4 w-4 text-foreground" />
+            </Button>
+          </div>
+
+          {/* Profile Picture - Elegant Overlap */}
+          <div className="relative px-4 md:px-6 lg:px-8">
+            <div className="relative -mt-20 md:-mt-24 inline-block">
+              {/* Smooth white border with shadow */}
+              <div className="absolute -inset-0.5 bg-white rounded-full shadow-lg"></div>
+              <Avatar className="relative h-36 w-36 md:h-44 md:w-44 border-4 border-background shadow-xl ring-2 ring-primary/10">
+                <AvatarImage src={user.avatar || undefined} alt={user.name} className="object-cover" />
+                <AvatarFallback className="text-2xl md:text-3xl font-semibold bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              {/* Edit Profile Picture Button - Sleeker Design */}
+              <Button
+                size="icon"
+                className="absolute bottom-1 right-1 h-10 w-10 md:h-11 md:w-11 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg border-2 border-background transition-all hover:scale-105"
+                onClick={() => setAvatarUploadOpen(true)}
+              >
+                <Camera className="h-4 w-4 md:h-5 md:w-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Profile Header Card */}
+        <Card className="mt-6 md:mt-8">
+          <CardContent className="pt-24 md:pt-28 pb-8">
+            <div className="flex flex-col gap-6">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-3xl font-bold">{user.name || "User"}</h1>
+                  {verificationStatus === "verified" && (
+                    <Badge variant="default" className="gap-1 bg-success text-success-foreground">
+                      <Check className="h-3 w-3" />
+                      Verified
+                    </Badge>
+                  )}
+                </div>
+                {profile?.bio ? (
+                  <p className="text-muted-foreground mt-2">{profile.bio}</p>
+                ) : (
+                  <p className="text-muted-foreground italic mt-2">No bio yet. Click Edit Profile to add one.</p>
+                )}
               </div>
 
               <div className="flex-1 space-y-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold">{user.name || "User"}</h2>
-                    {verificationStatus === "verified" && (
-                      <Badge variant="default" className="gap-1 bg-success text-success-foreground">
-                        <Check className="h-3 w-3" />
-                        Verified
-                      </Badge>
-                    )}
-                  </div>
-                  {profile?.bio ? (
-                    <p className="text-muted-foreground">{profile.bio}</p>
-                  ) : (
-                    <p className="text-muted-foreground italic">No bio yet. Click Edit Profile to add one.</p>
-                  )}
-                </div>
 
                 <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                   {profile?.currentJobTitle && profile?.currentCompany ? (
@@ -286,8 +330,8 @@ export default function ProfilePageClient() {
         </Card>
 
         {/* Work Experience */}
-        <section>
-          <div className="mb-4 flex items-center justify-between">
+        <section className="mt-8">
+          <div className="mb-6 flex items-center justify-between">
             <h2 className="text-xl font-bold">Work Experience</h2>
             <Button variant="outline" size="sm">
               <Plus className="mr-2 h-4 w-4" />
@@ -349,8 +393,8 @@ export default function ProfilePageClient() {
         </section>
 
         {/* Skills */}
-        <section>
-          <div className="mb-4 flex items-center justify-between">
+        <section className="mt-8">
+          <div className="mb-6 flex items-center justify-between">
             <h2 className="text-xl font-bold">Skills</h2>
             <Button variant="outline" size="sm">
               <Plus className="mr-2 h-4 w-4" />
@@ -361,7 +405,7 @@ export default function ProfilePageClient() {
             {/* User Skills */}
             {userSkills.length > 0 ? (
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="p-8">
                   <h3 className="mb-4 font-semibold text-foreground">Your Skills</h3>
                   <div className="flex flex-wrap gap-2">
                     {userSkills.map((userSkill: any) => (
@@ -384,8 +428,8 @@ export default function ProfilePageClient() {
         </section>
 
         {/* Credentials */}
-        <section>
-          <div className="mb-4 flex items-center justify-between">
+        <section className="mt-8">
+          <div className="mb-6 flex items-center justify-between">
             <h2 className="text-xl font-bold">Credentials</h2>
             <Button variant="outline" size="sm">
               Add Credential
@@ -436,8 +480,8 @@ export default function ProfilePageClient() {
         </section>
 
         {/* Projects */}
-        <section>
-          <div className="mb-4 flex items-center justify-between">
+        <section className="mt-8">
+          <div className="mb-6 flex items-center justify-between">
             <h2 className="text-xl font-bold">Featured Projects</h2>
             <Button variant="outline" size="sm">
               View All Projects
@@ -450,7 +494,7 @@ export default function ProfilePageClient() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-6 sm:grid-cols-2">
               {projects.slice(0, 4).map((project: any) => (
                 <Card key={project.id}>
                   <CardContent className="p-6">
@@ -497,8 +541,20 @@ export default function ProfilePageClient() {
         </section>
       </div>
 
-      <DownloadProfileDialog open={downloadDialogOpen} onOpenChange={setDownloadDialogOpen} />
+      <DownloadProfileDialog open={downloadDialogOpen} onOpenChange={setDownloadDialogOpen} user={user} profile={profile} />
       <EditProfileDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} />
+      <UploadImageDialog 
+        open={avatarUploadOpen} 
+        onOpenChange={setAvatarUploadOpen} 
+        type="avatar" 
+        currentImage={user?.avatar} 
+      />
+      <UploadImageDialog 
+        open={coverUploadOpen} 
+        onOpenChange={setCoverUploadOpen} 
+        type="coverImage" 
+        currentImage={profile?.coverImage} 
+      />
     </>
   )
 }
