@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, User, TrendingUp, Briefcase, Users, Eye, FolderKanban, Settings } from "lucide-react"
+import { Home, User, TrendingUp, Briefcase, Users, Eye, FolderKanban, Settings, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ROUTES } from "@/lib/constants"
 import { Button } from "@/components/ui/button"

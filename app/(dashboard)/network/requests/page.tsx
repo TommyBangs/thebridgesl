@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { PageHeader } from "@/components/shared/page-header"
@@ -147,14 +148,18 @@ export default function ConnectionRequestsPage() {
               <Card key={request.id} className="p-4 md:p-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={request.avatar || "/placeholder.svg"} alt={request.name} />
-                      <AvatarFallback>{request.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
+                    <Link href={`/users/${request.senderId}`}>
+                      <Avatar className="h-12 w-12 hover:opacity-80 transition-opacity">
+                        <AvatarImage src={request.avatar || "/placeholder.svg"} alt={request.name} />
+                        <AvatarFallback>{request.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                    </Link>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold truncate">{request.name}</h3>
+                        <Link href={`/users/${request.senderId}`} className="hover:underline">
+                          <h3 className="font-semibold truncate">{request.name}</h3>
+                        </Link>
                         <Badge variant="secondary" className="text-xs capitalize">
                           {request.connectionType}
                         </Badge>

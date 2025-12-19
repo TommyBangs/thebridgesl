@@ -24,7 +24,7 @@ export default async function CredentialViewPage({
       notFound()
     }
 
-    return <CredentialViewClient credential={credential} />
+    return <CredentialViewClient credential={credential} userName={credential.user.name} />
   } catch (error) {
     console.error("Error fetching credential:", error)
     notFound()

@@ -38,6 +38,7 @@ model User {
   userSkills           UserSkill[]
   verificationRequests VerificationRequest[] @relation("VerificationRequests")
   experiences          Experience[]
+  embedding            Unsupported("vector(1536)")?
 
   @@map("users")
 }
@@ -80,6 +81,7 @@ model Skill {
   trendingData      TrendingSkill?
   userSkills        UserSkill[]
   experienceSkills  ExperienceSkill[]
+  embedding         Unsupported("vector(1536)")?
 
   @@map("skills")
 }
@@ -186,6 +188,7 @@ model Project {
   media         ProjectMedia[]
   projectSkills ProjectSkill[]
   user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  embedding     Unsupported("vector(1536)")?
 
   @@map("projects")
 }
@@ -256,6 +259,7 @@ model Opportunity {
   applications      Application[]
   requirements      OpportunityRequirement[]
   opportunitySkills OpportunitySkill[]
+  embedding         Unsupported("vector(1536)")?
 
   @@map("opportunities")
 }

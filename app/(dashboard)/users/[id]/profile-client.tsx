@@ -1,6 +1,6 @@
 "use client"
 
-import { use } from "react"
+import { useState } from "react"
 import { useParams } from "next/navigation"
 import {
   MapPin,
@@ -15,25 +15,65 @@ import {
   Link as LinkIcon,
   Calendar,
   Award,
+  MessageSquare,
+  Users,
+  UserPlus,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/page-header"
 import { SkillBadge } from "@/components/shared/skill-badge"
 import { useApi } from "@/lib/hooks/use-api"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import { EmptyState } from "@/components/shared/empty-state"
 import { formatDate } from "@/lib/format"
+import { ROUTES } from "@/lib/constants"
+import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
 
 export default function PublicProfileClient() {
   const params = useParams()
   const userId = params.id as string
-  const { data: profileData, loading, error } = useApi<{ user: any }>(`/api/users/${userId}`)
+  const { data: profileData, loading, error, refetch } = useApi<{ user: any; connectionStatus: string }>(`/api/users/${userId}`)
+  const [sendingRequest, setSendingRequest] = useState(false)
 
   const user = profileData?.user
   const profile = user?.learnerProfile
+  const connectionStatus = profileData?.connectionStatus || "NONE"
+
+  const handleConnect = async () => {
+    try {
+      setSendingRequest(true)
+      const response = await fetch("/api/network/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receiverId: userId }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to send connection request")
+      }
+
+      toast({
+        title: "Connection request sent",
+        description: "Your connection request has been sent",
+      })
+
+      // Refresh profile data to update status
+      refetch()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send connection request",
+        variant: "destructive",
+      })
+    } finally {
+      setSendingRequest(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -87,16 +127,43 @@ export default function PublicProfileClient() {
             </div>
 
             <div className="flex-1 space-y-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-2xl font-bold">{user.name}</h2>
-                  {profile?.verificationStatus === "VERIFIED" && (
-                    <Badge variant="default" className="gap-1 bg-success text-success-foreground">
-                      Verified
-                    </Badge>
-                  )}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold">{user.name}</h2>
+                    {profile?.verificationStatus === "VERIFIED" && (
+                      <Badge variant="default" className="gap-1 bg-success text-success-foreground">
+                        Verified
+                      </Badge>
+                    )}
+                  </div>
+                  {profile?.bio && <p className="text-muted-foreground">{profile.bio}</p>}
                 </div>
-                {profile?.bio && <p className="text-muted-foreground">{profile.bio}</p>}
+
+                <div className="flex gap-2">
+                  {connectionStatus === "CONNECTED" ? (
+                    <Button variant="outline" className="gap-2" disabled>
+                      <Users className="h-4 w-4" />
+                      Connected
+                    </Button>
+                  ) : connectionStatus === "PENDING" ? (
+                    <Button variant="outline" className="gap-2" disabled>
+                      <Calendar className="h-4 w-4" />
+                      Pending
+                    </Button>
+                  ) : (
+                    <Button className="gap-2" onClick={handleConnect} disabled={sendingRequest}>
+                      <UserPlus className="h-4 w-4" />
+                      {sendingRequest ? "Sending..." : "Connect"}
+                    </Button>
+                  )}
+                  <Link href={`${ROUTES.MESSAGES}/${user.id}`}>
+                    <Button variant="outline" className="gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Message
+                    </Button>
+                  </Link>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
@@ -181,8 +248,7 @@ export default function PublicProfileClient() {
               {user.userSkills.map((userSkill: any) => (
                 <SkillBadge
                   key={userSkill.skill.id}
-                  skill={userSkill.skill.name}
-                  level={userSkill.proficiencyLevel}
+                  name={userSkill.skill.name}
                 />
               ))}
             </div>
@@ -271,4 +337,3 @@ export default function PublicProfileClient() {
     </div>
   )
 }
-

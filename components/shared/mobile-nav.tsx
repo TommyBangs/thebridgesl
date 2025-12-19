@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, User, TrendingUp, FolderKanban, Users } from "lucide-react"
+import { Home, User, TrendingUp, FolderKanban, Users, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ROUTES } from "@/lib/constants"
 

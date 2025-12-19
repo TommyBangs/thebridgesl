@@ -102,7 +102,12 @@ export default function NotificationsPage() {
   const handleDelete = async (id: string) => {
     try {
       setProcessing((prev) => new Set(prev).add(id))
-      // Note: Delete endpoint not implemented yet, so we'll just remove from state
+      const response = await fetch(`/api/notifications/${id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) throw new Error("Failed to delete notification")
+
       setNotifications((prev) => prev.filter((n) => n.id !== id))
       toast({
         title: "Notification removed",

@@ -9,10 +9,13 @@ import { formatDate } from "@/lib/format"
 import type { Credential } from "@/types"
 
 interface CredentialViewClientProps {
-  credential: Credential
+  credential: Omit<Credential, "skills"> & {
+    skills: { id: string; name: string }[]
+  }
+  userName: string
 }
 
-export default function CredentialViewClient({ credential }: CredentialViewClientProps) {
+export default function CredentialViewClient({ credential, userName }: CredentialViewClientProps) {
   const handleDownload = () => {
     // In production, this would generate and download a PDF
     console.log("[v0] Downloading credential:", credential.id)
@@ -71,7 +74,7 @@ export default function CredentialViewClient({ credential }: CredentialViewClien
                   {/* Credential Title */}
                   <div className="space-y-3 sm:space-y-4">
                     <p className="text-base text-muted-foreground sm:text-lg">This certifies that</p>
-                    <h2 className="text-2xl font-bold text-primary sm:text-4xl">Alex Johnson</h2>
+                    <h2 className="text-2xl font-bold text-primary sm:text-4xl">{userName}</h2>
                     <p className="text-base text-muted-foreground sm:text-lg">has successfully completed</p>
                     <h3 className="text-lg font-semibold text-foreground sm:text-2xl">{credential.title}</h3>
                   </div>
@@ -101,8 +104,8 @@ export default function CredentialViewClient({ credential }: CredentialViewClien
               <h3 className="mb-4 font-semibold">Skills & Competencies</h3>
               <div className="flex flex-wrap gap-2">
                 {credential.skills.map((skill) => (
-                  <Badge key={skill} variant="secondary" className="px-3 py-1">
-                    {skill}
+                  <Badge key={skill.id} variant="secondary" className="px-3 py-1">
+                    {skill.name}
                   </Badge>
                 ))}
               </div>

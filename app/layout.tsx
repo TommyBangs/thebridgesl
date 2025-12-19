@@ -32,12 +32,7 @@ export const metadata: Metadata = {
     description: "Connect your skills to opportunities with verified credentials and AI-powered career guidance",
   },
   icons: {
-    icon: [
-      { url: "/bridge-logo.png" },
-      { url: "/icon-light-32x32.png", media: "(prefers-color-scheme: light)" },
-      { url: "/icon-dark-32x32.png", media: "(prefers-color-scheme: dark)" },
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
+    icon: "/bridge-logo.png",
     apple: "/bridge-logo.png",
   },
 }

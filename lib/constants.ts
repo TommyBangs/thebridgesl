@@ -81,6 +81,7 @@ export const ROUTES = {
   VERIFY: "/verify",
   SETTINGS: "/settings",
   NOTIFICATIONS: "/notifications",
+  MESSAGES: "/messages",
 } as const
 
 // ============================================================================

@@ -9,16 +9,27 @@ async function main() {
     // --- 1. Users ---
     const usersData = []
     const roles = [UserRole.STUDENT, UserRole.INSTITUTION, UserRole.EMPLOYER]
+    const names = [
+        "Alex Johnson", "Sarah Chen", "Michael Rodriguez", "Emily Wong", "David Smith",
+        "Jessica Taylor", "Ryan Williams", "Chloe Davis", "Kevin Miller", "Olivia Wilson",
+        "James Brown", "Sophia Moore", "Daniel Taylor", "Isabella Anderson", "Matthew Thomas",
+        "Ava Jackson", "Joseph White", "Mia Harris", "Samuel Martin", "Charlotte Thompson",
+        "Daniel Garcia", "Isabella Martinez", "Matthew Robinson", "Ava Clark", "Joseph Rodriguez",
+        "Mia Lewis", "Samuel Lee", "Charlotte Walker", "Daniel Hall", "Isabella Allen",
+        "Matthew Young", "Ava Hernandez", "Joseph King", "Mia Wright", "Samuel Lopez",
+        "Charlotte Hill", "Daniel Scott", "Isabella Green", "Matthew Adams", "Ava Baker",
+        "Joseph Gonzalez", "Mia Nelson", "Samuel Carter", "Charlotte Mitchell", "Daniel Perez",
+        "Isabella Roberts", "Matthew Turner", "Ava Phillips", "Joseph Campbell", "Mia Parker"
+    ]
 
-    for (let i = 1; i <= 25; i++) {
+    for (let i = 0; i < 50; i++) {
         usersData.push({
-            email: `user${i}@example.com`,
-            name: `User ${i}`,
+            email: `user${i + 1}@example.com`,
+            name: names[i] || `User ${i + 1}`,
             passwordHash: await bcrypt.hash('password', 10),
-
             role: roles[i % 3],
             onboarded: true,
-            avatar: `https://i.pravatar.cc/150?u=user${i}`,
+            avatar: `https://i.pravatar.cc/150?u=user${i + 1}`,
         })
     }
 

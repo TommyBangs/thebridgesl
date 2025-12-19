@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { Search, UserPlus, Users } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -125,12 +126,16 @@ export default function FindConnectionsPage() {
                 <CardContent className="p-6">
                   <div className="space-y-4">
                     <div className="flex items-start gap-4">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={person.avatar || "/placeholder.svg"} alt={person.name} />
-                        <AvatarFallback>{person.name[0]}</AvatarFallback>
-                      </Avatar>
+                      <Link href={`/users/${person.id}`}>
+                        <Avatar className="h-12 w-12 hover:opacity-80 transition-opacity">
+                          <AvatarImage src={person.avatar || "/placeholder.svg"} alt={person.name} />
+                          <AvatarFallback>{person.name[0]}</AvatarFallback>
+                        </Avatar>
+                      </Link>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold truncate">{person.name}</h3>
+                        <Link href={`/users/${person.id}`} className="hover:underline">
+                          <h3 className="font-semibold truncate">{person.name}</h3>
+                        </Link>
                         <p className="text-sm text-muted-foreground truncate">{person.role}</p>
                         <p className="text-xs text-muted-foreground truncate">{person.company || person.university}</p>
                       </div>

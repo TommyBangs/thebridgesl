@@ -10,6 +10,9 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { formatCurrency } from "@/lib/format"
 
+import { useApi } from "@/lib/hooks/use-api"
+import { LoadingSpinner } from "@/components/shared/loading-spinner"
+
 interface PathwayStep {
   stage: number
   title: string
@@ -27,71 +30,46 @@ interface CareerRecommendation {
   matchScore: number
 }
 
-const careerRecommendations: CareerRecommendation[] = [
-  { title: "AI/ML Engineer", demand: 95, growth: "+42%", avgSalary: 1450000000, openings: 8934, matchScore: 94 },
-  { title: "Full Stack Developer", demand: 88, growth: "+28%", avgSalary: 1200000000, openings: 12453, matchScore: 89 },
-  { title: "Data Scientist", demand: 92, growth: "+38%", avgSalary: 1350000000, openings: 7621, matchScore: 91 },
-  { title: "Cloud Architect", demand: 85, growth: "+35%", avgSalary: 1550000000, openings: 5234, matchScore: 87 },
-  { title: "DevOps Engineer", demand: 83, growth: "+30%", avgSalary: 1250000000, openings: 6789, matchScore: 85 },
-  { title: "Product Manager", demand: 80, growth: "+25%", avgSalary: 1400000000, openings: 4521, matchScore: 82 },
-]
-
 export default function CareerClientPage() {
   const [careerGoal, setCareerGoal] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedPathway, setGeneratedPathway] = useState<PathwayStep[] | null>(null)
+
+  const { data: recommendationsData, loading: recommendationsLoading } = useApi<{ recommendations: CareerRecommendation[] }>("/career/recommendations")
+  const careerRecommendations = recommendationsData?.recommendations || []
 
   const handleGeneratePathway = async () => {
     if (!careerGoal.trim()) return
 
     setIsGenerating(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    try {
+      const response = await fetch("/api/career/pathway", {
+        method: "POST",
+        body: JSON.stringify({ goal: careerGoal }),
+      })
 
-    const pathway: PathwayStep[] = [
-      {
-        stage: 1,
-        title: "Foundation",
-        description: "Building core skills and knowledge base",
-        progress: 100,
-        status: "current",
-      },
-      {
-        stage: 2,
-        title: `Learn ${careerGoal} Essentials`,
-        description: "Master fundamental concepts and tools",
-        progress: 65,
-        status: "current",
-      },
-      {
-        stage: 3,
-        title: `Build ${careerGoal} Experience`,
-        description: "Real-world projects and practical application",
-        progress: 0,
-        status: "upcoming",
-      },
-      {
-        stage: 4,
-        title: `Advance ${careerGoal} Expertise`,
-        description: "Specialization and professional networking",
-        progress: 0,
-        status: "future",
-      },
-      {
-        stage: 5,
-        title: `Master ${careerGoal}`,
-        description: "Leadership and industry recognition",
-        progress: 0,
-        status: "future",
-      },
-    ]
+      if (!response.ok) throw new Error("Failed to generate pathway")
 
-    setGeneratedPathway(pathway)
-    setIsGenerating(false)
+      const data = await response.json()
+      setGeneratedPathway(data.pathway)
+    } catch (error) {
+      console.error("Error generating pathway:", error)
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   // Only show pathway if user has generated one
   const displayPathway = generatedPathway || []
+
+  if (recommendationsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -147,67 +125,64 @@ export default function CareerClientPage() {
           <CardContent>
             <div className="relative space-y-0">
               {displayPathway.map((step, index) => (
-              <div key={index} className="relative flex gap-6 pb-8 last:pb-0">
-                {/* Stage Circle */}
-                <div className="relative flex flex-col items-center">
-                  <div
-                    className={`z-10 flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold transition-all ${
-                      step.status === "current"
+                <div key={index} className="relative flex gap-6 pb-8 last:pb-0">
+                  {/* Stage Circle */}
+                  <div className="relative flex flex-col items-center">
+                    <div
+                      className={`z-10 flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold transition-all ${step.status === "current"
                         ? "bg-primary text-primary-foreground shadow-lg shadow-primary/50"
                         : step.status === "upcoming"
                           ? "border-2 border-primary bg-background text-primary"
                           : "border-2 border-muted bg-muted/30 text-muted-foreground"
-                    }`}
-                  >
-                    {step.stage}
-                  </div>
-                  {/* Arrow connector */}
-                  {index < displayPathway.length - 1 && (
-                    <div className="absolute left-1/2 top-12 flex h-[calc(100%+2rem)] -translate-x-1/2 flex-col items-center">
-                      <div className={`w-0.5 flex-1 ${step.status === "current" ? "bg-primary" : "bg-border"}`} />
-                      <ArrowRight
-                        className={`absolute bottom-0 h-6 w-6 rotate-90 ${
-                          step.status === "current" ? "text-primary" : "text-muted-foreground"
                         }`}
-                      />
+                    >
+                      {step.stage}
                     </div>
-                  )}
-                </div>
+                    {/* Arrow connector */}
+                    {index < displayPathway.length - 1 && (
+                      <div className="absolute left-1/2 top-12 flex h-[calc(100%+2rem)] -translate-x-1/2 flex-col items-center">
+                        <div className={`w-0.5 flex-1 ${step.status === "current" ? "bg-primary" : "bg-border"}`} />
+                        <ArrowRight
+                          className={`absolute bottom-0 h-6 w-6 rotate-90 ${step.status === "current" ? "text-primary" : "text-muted-foreground"
+                            }`}
+                        />
+                      </div>
+                    )}
+                  </div>
 
-                {/* Content */}
-                <div className="flex-1 pt-1">
-                  <div
-                    className={`rounded-lg border p-4 transition-all ${
-                      step.status === "current"
+                  {/* Content */}
+                  <div className="flex-1 pt-1">
+                    <div
+                      className={`rounded-lg border p-4 transition-all ${step.status === "current"
                         ? "border-primary/50 bg-primary/5"
                         : step.status === "upcoming"
                           ? "border-primary/30 bg-background"
                           : "border-muted bg-muted/20"
-                    }`}
-                  >
-                    {step.status === "current" && step.stage === 1 && (
-                      <Badge className="mb-2 bg-success">Current Stage</Badge>
-                    )}
-                    <h3 className="mb-1 text-lg font-semibold">{step.title}</h3>
-                    <p className="text-sm text-muted-foreground">{step.description}</p>
-                    {step.progress !== undefined && step.progress > 0 && (
-                      <div className="mt-3">
-                        <div className="mb-1 flex items-center justify-between text-xs">
-                          <span className="font-medium">Progress</span>
-                          <span className="text-muted-foreground">{step.progress}%</span>
+                        }`}
+                    >
+                      {step.status === "current" && step.stage === 1 && (
+                        <Badge className="mb-2 bg-success">Current Stage</Badge>
+                      )}
+                      <h3 className="mb-1 text-lg font-semibold">{step.title}</h3>
+                      <p className="text-sm text-muted-foreground">{step.description}</p>
+                      {step.progress !== undefined && step.progress > 0 && (
+                        <div className="mt-3">
+                          <div className="mb-1 flex items-center justify-between text-xs">
+                            <span className="font-medium">Progress</span>
+                            <span className="text-muted-foreground">{step.progress}%</span>
+                          </div>
+                          <Progress value={step.progress} className="h-2" />
                         </div>
-                        <Progress value={step.progress} className="h-2" />
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
               ))}
             </div>
           </CardContent>
         </Card>
       )}
-      
+
       {displayPathway.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">

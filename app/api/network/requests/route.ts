@@ -42,23 +42,39 @@ export async function GET(request: NextRequest) {
             },
         })
 
-        const formattedRequests = requests.map((req: any) => {
-            const user = type === "sent" ? req.receiver : req.sender
+        const formattedRequests = await Promise.all(requests.map(async (req: any) => {
+            const otherUser = type === "sent" ? req.receiver : req.sender
+
+            // Calculate mutual connections
+            const myConnections = await db.connection.findMany({
+                where: { userId },
+                select: { connectedUserId: true },
+            })
+            const myConnectedIds = new Set(myConnections.map((c: any) => c.connectedUserId))
+
+            const otherConnections = await db.connection.findMany({
+                where: { userId: otherUser.id },
+                select: { connectedUserId: true },
+            })
+            const otherConnectedIds = new Set(otherConnections.map((c: any) => c.connectedUserId))
+
+            const mutualCount = Array.from(myConnectedIds).filter(id => otherConnectedIds.has(id)).length
+
             return {
                 id: req.id,
-                name: user.name,
-                email: user.email,
-                avatar: user.avatar,
-                role: user.learnerProfile?.currentJobTitle || "Student",
-                company: user.learnerProfile?.currentCompany,
-                connectionType: "peer", // Default, can be enhanced
-                mutualConnections: 0, // Can be calculated if needed
+                name: otherUser.name,
+                email: otherUser.email,
+                avatar: otherUser.avatar,
+                role: otherUser.learnerProfile?.currentJobTitle || "Student",
+                company: otherUser.learnerProfile?.currentCompany,
+                connectionType: "peer",
+                mutualConnections: mutualCount,
                 message: req.message,
                 requestedAt: req.requestedAt.toISOString(),
                 senderId: req.senderId,
                 receiverId: req.receiverId,
             }
-        })
+        }))
 
         return NextResponse.json({ requests: formattedRequests })
     } catch (error: any) {

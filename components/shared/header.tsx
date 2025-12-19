@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Bell, Search, Compass } from "lucide-react"
+import { Bell, Search, Compass, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -14,14 +14,48 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useState, useEffect } from "react"
 import { Logo } from "./logo"
 import { ROUTES } from "@/lib/constants"
 import { useSession } from "@/lib/hooks/use-session"
 import { signOut } from "next-auth/react"
+import { cn } from "@/lib/utils"
 
 export function Header() {
   const router = useRouter()
   const { user } = useSession()
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
+  const [unreadMessages, setUnreadMessages] = useState(0)
+
+  useEffect(() => {
+    if (!user) return
+
+    const fetchCounts = async () => {
+      try {
+        // Fetch unread notifications
+        const notifRes = await fetch("/api/notifications?unread=true")
+        if (notifRes.ok) {
+          const notifData = await notifRes.json()
+          setUnreadNotifications(notifData.notifications?.length || 0)
+        }
+
+        // Fetch unread messages
+        const msgRes = await fetch("/api/messages")
+        if (msgRes.ok) {
+          const msgData = await msgRes.json()
+          const totalUnread = msgData.conversations?.reduce((acc: number, conv: any) => acc + (conv.unreadCount || 0), 0) || 0
+          setUnreadMessages(totalUnread)
+        }
+      } catch (error) {
+        console.error("Error fetching counts:", error)
+      }
+    }
+
+    fetchCounts()
+    const interval = setInterval(fetchCounts, 30000) // Poll every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [user])
 
   const handleSignOut = async () => {
     await signOut({ redirect: false })
@@ -45,10 +79,10 @@ export function Header() {
           <div className="hidden flex-1 md:block md:max-w-md">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input 
-                type="search" 
-                placeholder="Search skills, jobs, people..." 
-                className="pl-9 border-border/50 focus:border-primary/50 focus:ring-primary/20" 
+              <Input
+                type="search"
+                placeholder="Search skills, jobs, people..."
+                className="pl-9 border-border/50 focus:border-primary/50 focus:ring-primary/20"
               />
             </div>
           </div>
@@ -61,10 +95,26 @@ export function Header() {
               </Button>
             </Link>
 
+            <Link href={ROUTES.MESSAGES}>
+              <Button variant="ghost" size="icon" className="relative hover:bg-primary/10 hover:text-primary">
+                <MessageSquare className="h-6 w-6" />
+                {unreadMessages > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground ring-2 ring-background">
+                    {unreadMessages > 9 ? "9+" : unreadMessages}
+                  </span>
+                )}
+                <span className="sr-only">Messages</span>
+              </Button>
+            </Link>
+
             <Link href={ROUTES.NOTIFICATIONS}>
               <Button variant="ghost" size="icon" className="relative hover:bg-primary/10 hover:text-primary">
                 <Bell className="h-6 w-6" />
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive ring-2 ring-background animate-pulse" />
+                {unreadNotifications > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground ring-2 ring-background">
+                    {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                  </span>
+                )}
                 <span className="sr-only">Notifications</span>
               </Button>
             </Link>
@@ -82,7 +132,14 @@ export function Header() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user?.name || "User"}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.email || "user@example.com"}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href={ROUTES.PROFILE}>Profile</Link>
